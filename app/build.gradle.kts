@@ -36,6 +36,15 @@ android {
     }
 
     signingConfigs {
+        // Fixed, NON-secret key used only for debug / test builds (CI and local). Every debug APK
+        // is signed with the same key, so a new test build installs over the previous one without
+        // uninstalling. Release builds never use it (see the "release" config below).
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (hasReleaseKeystore) {
             create("release") {
                 storeFile = file(keystorePath!!)

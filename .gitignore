@@ -12,6 +12,7 @@ captures/
 # Signing material: NEVER commit these
 *.jks
 *.keystore
+!app/debug.keystore
 *.p12
 keystore.properties
 signing.properties
