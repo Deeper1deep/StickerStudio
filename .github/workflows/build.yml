@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -26,6 +26,22 @@ jobs:
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
+      # GitHub Actions artifacts are always downloaded as ZIP files. Publish a
+      # separate direct .apk asset so Android users can tap Install immediately.
+      - name: Publish direct APK download (nightly testing build)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: StickerStudio Nightly (testing only)
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          files: app/build/outputs/apk/debug/*.apk
+          body: |
+            Automatic debug build for testing only.
+            Download the .apk asset directly; do not download the source code ZIP.
+            This is not an official production release.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
