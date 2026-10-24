@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -166,7 +167,7 @@ fun PackDetailScreen(
                                 style = MaterialTheme.typography.labelMedium,
                             )
                             IconButton(onClick = { menuFor = s }, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
-                                Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, stringResource(R.string.more))
+                                Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
                             }
                             DropdownMenu(expanded = menuFor?.id == s.id, onDismissRequest = { menuFor = null }) {
                                 if (!s.animated) DropdownMenuItem(
