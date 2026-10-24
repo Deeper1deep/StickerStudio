@@ -6,11 +6,14 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: write   # only used to publish the test release on pushes to main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Every CI build gets a higher version, so the app can see and install the newest one.
+      BUILD_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -21,7 +24,7 @@ jobs:
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
       - name: Debug APK (debug-signed, for testing only)
-        run: ./gradlew assembleDebug --stacktrace -PUPDATE_REPO_OWNER=${{ github.repository_owner }} -PUPDATE_REPO_NAME=${{ github.event.repository.name }}
+        run: ./gradlew assembleDebug --stacktrace -PAPP_VERSION_CODE=$BUILD_CODE -PAPP_VERSION_NAME=1.0.$BUILD_CODE -PUPDATE_REPO_OWNER=${{ github.repository_owner }} -PUPDATE_REPO_NAME=${{ github.event.repository.name }}
       - uses: actions/upload-artifact@v4
         with:
           name: debug-apk
@@ -42,6 +45,36 @@ jobs:
             Automatic debug build for testing only.
             Download the .apk asset directly; do not download the source code ZIP.
             This is not an official production release.
+      - name: Publish test release (update feed for the in-app updater)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          VN="1.0.$BUILD_CODE"
+          mkdir -p dist
+          APK="dist/StickerStudio-$VN.apk"
+          cp app/build/outputs/apk/debug/*.apk "$APK"
+          export VN APK
+          python3 - <<'PY'
+          import hashlib, json, os, datetime
+          apk = os.environ["APK"]; vn = os.environ["VN"]
+          data = open(apk, "rb").read()
+          msg = os.environ.get("COMMIT_MSG", "").split("Co-Authored-By:")[0].strip()
+          json.dump({
+            "versionName": vn,
+            "versionCode": int(os.environ["BUILD_CODE"]),
+            "apkUrl": "https://github.com/%s/releases/download/build-%s/StickerStudio-%s.apk" % (os.environ["GITHUB_REPOSITORY"], os.environ["BUILD_CODE"], vn),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "sizeBytes": len(data),
+            "applicationId": "com.stickerstudio.app",
+            "publishedAt": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "changelog": msg,
+          }, open("dist/update.json", "w"), indent=2, ensure_ascii=False)
+          PY
+          gh release create "build-$BUILD_CODE" "$APK" dist/update.json --title "Build $VN (test, debug-signed)" --notes "$COMMIT_MSG" --latest
+          # keep only the 5 newest test builds
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | grep '^build-' | sort -t- -k2 -n -r | tail -n +6 | while read t; do gh release delete "$t" --cleanup-tag -y || true; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:

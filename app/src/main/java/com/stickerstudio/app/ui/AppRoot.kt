@@ -3,6 +3,12 @@ package com.stickerstudio.app.ui
 import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
@@ -92,6 +98,41 @@ fun AppRoot() {
         Tab(Routes.SETTINGS, R.string.nav_settings),
     )
     val showBar = tabs.any { it.route == current }
+
+    // Telegram-style "new version" popup: once per launch, only on the main tabs.
+    val appContext = androidx.compose.ui.platform.LocalContext.current
+    val updates = appContext.container.updates
+    val updateState by updates.state.collectAsState()
+    var updateDismissed by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    val available = updateState as? com.stickerstudio.app.update.UpdateUiState.Available
+    if (available != null && !available.skipped && !updateDismissed && showBar) {
+        val m = available.manifest
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { updateDismissed = true },
+            title = { Text(stringResource(R.string.update_available_title, m.versionName)) },
+            text = {
+                Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                    Text(stringResource(R.string.update_size_mb, m.sizeBytes / 1048576.0), style = MaterialTheme.typography.labelLarge)
+                    if (m.changelog.isNotBlank()) {
+                        Text(m.changelog.take(600), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    updateDismissed = true
+                    updates.startDownload(m)
+                    nav.navigate(Routes.UPDATES)
+                }) { Text(stringResource(R.string.update_now)) }
+            },
+            dismissButton = {
+                Row {
+                    androidx.compose.material3.TextButton(onClick = { updates.skip(m); updateDismissed = true }) { Text(stringResource(R.string.update_skip)) }
+                    androidx.compose.material3.TextButton(onClick = { updateDismissed = true }) { Text(stringResource(R.string.update_later)) }
+                }
+            },
+        )
+    }
 
     Scaffold(
         bottomBar = {

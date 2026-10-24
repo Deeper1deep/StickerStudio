@@ -81,11 +81,12 @@ class VideoFrameSource(file: File) : FrameSource {
         }
     }
 
-    override fun frameAt(timeMs: Long): Bitmap? =
-        retriever.getFrameAtTime(
-            timeMs.coerceIn(0L, durationMs) * 1000L,
-            MediaMetadataRetriever.OPTION_CLOSEST,
-        )
+    override fun frameAt(timeMs: Long): Bitmap? {
+        val us = timeMs.coerceIn(0L, durationMs) * 1000L
+        // Some WebM files cannot seek to an exact frame; fall back to the nearest key frame.
+        return retriever.getFrameAtTime(us, MediaMetadataRetriever.OPTION_CLOSEST)
+            ?: retriever.getFrameAtTime(us, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+    }
 
     override fun close() = retriever.release()
 }

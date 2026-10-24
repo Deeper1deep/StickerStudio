@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.stickerstudio.app.sticker.MediaKind
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -97,10 +98,27 @@ fun CreateScreen(
         }
     }
 
-    fun isAnimatedKind(uri: Uri): Boolean {
-        val mime = context.contentResolver.getType(uri).orEmpty()
-        return mime == "image/gif" || mime.startsWith("video/")
+    fun kindOf(uri: Uri): MediaKind {
+        val header = try {
+            context.contentResolver.openInputStream(uri)?.use { i ->
+                val buf = ByteArray(16)
+                val n = i.read(buf)
+                if (n > 0) buf.copyOf(n) else null
+            }
+        } catch (e: Exception) {
+            null
+        }
+        val name = try {
+            context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        } catch (e: Exception) {
+            null
+        } ?: uri.lastPathSegment
+        return MediaKind.detect(header, context.contentResolver.getType(uri), name)
     }
+
+    fun isAnimatedKind(uri: Uri): Boolean = kindOf(uri).isAnimatedSource
 
     fun openPicture(uri: Uri) {
         scope.launch {
@@ -114,10 +132,11 @@ fun CreateScreen(
     fun openAnimated(uri: Uri) {
         scope.launch {
             busy = true
-            val isVideo = context.contentResolver.getType(uri).orEmpty().startsWith("video/")
+            val kind = withContext(Dispatchers.IO) { kindOf(uri) }
+            val isVideo = kind.isVideo
             val name = withContext(Dispatchers.IO) {
                 try {
-                    BitmapLoader.copyRaw(context, uri, repo.paths.sources, if (isVideo) "mp4" else "gif")
+                    BitmapLoader.copyRaw(context, uri, repo.paths.sources, kind.extension)
                 } catch (e: Exception) {
                     null
                 }
@@ -202,7 +221,7 @@ fun CreateScreen(
                 cameraUri = u
                 camera.launch(u)
             }
-            SourceTile(Icons.Filled.FolderOpen, R.string.create_files, Modifier.weight(1f)) { files.launch(arrayOf("image/*", "video/*")) }
+            SourceTile(Icons.Filled.FolderOpen, R.string.create_files, Modifier.weight(1f)) { files.launch(arrayOf("image/*", "video/*", "application/octet-stream")) }
             SourceTile(Icons.Filled.TextFields, R.string.create_blank, Modifier.weight(1f)) { withPack { onBlankEditor(it) } }
             SourceTile(Icons.Filled.PhotoLibrary, R.string.create_batch, Modifier.weight(1f)) { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
         }

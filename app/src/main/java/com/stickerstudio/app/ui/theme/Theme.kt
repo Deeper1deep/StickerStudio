@@ -4,6 +4,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
+import com.stickerstudio.app.R
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -62,14 +68,35 @@ private val AppShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
+/** Cairo (SIL OFL), a variable font bundled in res/font, used for Arabic and Latin text. */
+@OptIn(ExperimentalTextApi::class)
+private val CairoFamily = FontFamily(
+    listOf(400, 500, 600, 700, 800).map { w ->
+        Font(R.font.cairo, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+    },
+)
+
 private val base = Typography()
+
+private fun TextStyle.cairo(weight: FontWeight? = null) =
+    copy(fontFamily = CairoFamily, fontWeight = weight ?: fontWeight)
+
 private val AppTypography = Typography(
-    headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-    headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-    titleLarge = base.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-    titleMedium = base.titleMedium.copy(fontWeight = FontWeight.Bold),
-    titleSmall = base.titleSmall.copy(fontWeight = FontWeight.Bold),
-    labelLarge = base.labelLarge.copy(fontWeight = FontWeight.Bold),
+    displayLarge = base.displayLarge.cairo(),
+    displayMedium = base.displayMedium.cairo(),
+    displaySmall = base.displaySmall.cairo(),
+    headlineLarge = base.headlineLarge.cairo(),
+    headlineMedium = base.headlineMedium.cairo(FontWeight.ExtraBold),
+    headlineSmall = base.headlineSmall.cairo(FontWeight.ExtraBold),
+    titleLarge = base.titleLarge.cairo(FontWeight.ExtraBold),
+    titleMedium = base.titleMedium.cairo(FontWeight.Bold),
+    titleSmall = base.titleSmall.cairo(FontWeight.Bold),
+    bodyLarge = base.bodyLarge.cairo(),
+    bodyMedium = base.bodyMedium.cairo(),
+    bodySmall = base.bodySmall.cairo(),
+    labelLarge = base.labelLarge.cairo(FontWeight.Bold),
+    labelMedium = base.labelMedium.cairo(FontWeight.SemiBold),
+    labelSmall = base.labelSmall.cairo(FontWeight.SemiBold),
 )
 
 @Composable

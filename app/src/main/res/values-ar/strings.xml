@@ -226,8 +226,10 @@
     <string name="update_install">تثبيت التحديث</string>
     <string name="update_install_hint">سيطلب أندرويد تأكيدك. حزمك وإعداداتك ستبقى كما هي.</string>
     <string name="update_installed">الإصدار المثبّت: %1$s (%2$d)</string>
+    <string name="update_later">لاحقًا</string>
     <string name="update_no_release">لم يُنشر أي إصدار بعد.</string>
     <string name="update_not_configured">التحديثات غير مفعّلة في هذا الإصدار.</string>
+    <string name="update_now">تحديث الآن</string>
     <string name="update_retry">حاول مرة أخرى</string>
     <string name="update_size_mb">الحجم: %1$.1f م.ب</string>
     <string name="update_skip">تخطي هذا الإصدار</string>
