@@ -101,8 +101,17 @@ class StickerContentProvider : ContentProvider() {
             throw FileNotFoundException("Illegal path")
         }
         if (!file.isFile) throw FileNotFoundException("No such sticker file")
+        val dao = AppDatabase.get(ctx).dao()
+        val pack = dao.findPack(packId)
+        val sticker = dao.stickersOf(packId).firstOrNull { it.fileName == name }
+        // Static stickers of a pack that also has animated ones are served as animated WebPs.
+        val served = if (pack != null && sticker != null) {
+            ExportFiles.resolve(File(packsRoot, packId), sticker, pack.animated)
+        } else {
+            file
+        }
         return AssetFileDescriptor(
-            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY), 0L, AssetFileDescriptor.UNKNOWN_LENGTH,
+            ParcelFileDescriptor.open(served, ParcelFileDescriptor.MODE_READ_ONLY), 0L, AssetFileDescriptor.UNKNOWN_LENGTH,
         )
     }
 

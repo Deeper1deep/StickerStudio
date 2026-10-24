@@ -19,7 +19,7 @@ data class PackEntity(
     val trayFile: String?,
     /** Sticker chosen by the user as pack icon, null = first sticker. */
     val trayStickerId: String?,
-    /** True when the pack contains animated stickers (WhatsApp does not allow mixing). */
+    /** True when the pack contains animated stickers (static ones are wrapped at export). */
     val animated: Boolean,
     /** Sent to WhatsApp as image_data_version; must change whenever any image changes. */
     val imageDataVersion: Int,

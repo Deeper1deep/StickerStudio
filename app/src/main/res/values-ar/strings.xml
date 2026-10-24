@@ -148,13 +148,19 @@
     <string name="pack_count">%1$d ملصق</string>
     <string name="pack_empty_body">واتساب يحتاج 3 ملصقات على الأقل. أضف صورًا بزر +.</string>
     <string name="pack_empty_title">الحزمة فارغة</string>
+    <string name="pack_issues">%1$d أمور تحتاج إصلاحًا</string>
+    <string name="pack_issues_body">اضغط لمعرفة ما ينقص</string>
+    <string name="pack_mixed_note">هذه الحزمة تجمع ملصقات ثابتة ومتحركة. الثابتة تُصدَّر كملصقات متحركة بدون حركة حتى يقبلها واتساب.</string>
     <string name="pack_name">اسم الحزمة</string>
     <string name="pack_not_ready">الحزمة غير جاهزة لواتساب</string>
     <string name="pack_not_ready_hint">أصلح هذه المشاكل ثم حاول مرة أخرى:</string>
     <string name="pack_publisher">الناشر</string>
+    <string name="pack_ready">الحزمة جاهزة لواتساب</string>
+    <string name="pack_ready_body">كل الشروط متحققة</string>
     <string name="pack_status">%1$d من %2$d ملصق</string>
     <string name="packs_empty_body">أنشئ أول حزمة ملصقات بزر +.</string>
     <string name="packs_empty_title">لا توجد حزم بعد</string>
+    <string name="packs_total">%1$d حزمة</string>
     <string name="pen_color">لون القلم</string>
     <string name="preview">معاينة</string>
     <string name="redo">إعادة</string>
@@ -216,6 +222,7 @@
     <string name="update_err_server">GitHub أعاد خطأ.</string>
     <string name="update_err_signature">شهادة التوقيع تختلف عن التطبيق المثبّت. تم رفض الملف.</string>
     <string name="update_err_size">حجم الملف المنزّل غير مطابق. تم رفضه.</string>
+    <string name="update_idle">اضغط «تحقق الآن» للبحث عن إصدار جديد.</string>
     <string name="update_install">تثبيت التحديث</string>
     <string name="update_install_hint">سيطلب أندرويد تأكيدك. حزمك وإعداداتك ستبقى كما هي.</string>
     <string name="update_installed">الإصدار المثبّت: %1$s (%2$d)</string>

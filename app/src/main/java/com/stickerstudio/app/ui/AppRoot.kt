@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -96,8 +98,8 @@ fun AppRoot() {
                             icon = {
                                 when (tab.route) {
                                     Routes.HOME -> Icon(Icons.Filled.Home, null)
-                                    Routes.CREATE -> Icon(Icons.Filled.Add, null)
-                                    Routes.PACKS -> Icon(painterResource(R.drawable.ic_packs), null)
+                                    Routes.CREATE -> Icon(Icons.Filled.AddCircle, null)
+                                    Routes.PACKS -> Icon(Icons.Filled.GridView, null)
                                     else -> Icon(Icons.Filled.Settings, null)
                                 }
                             },

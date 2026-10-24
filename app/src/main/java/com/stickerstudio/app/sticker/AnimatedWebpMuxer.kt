@@ -17,6 +17,18 @@ object AnimatedWebpMuxer {
     class Frame(val webp: ByteArray, val durationMs: Int)
 
     /**
+     * Wraps a static WebP as an animated WebP with two identical frames (it does not move).
+     * WhatsApp wants every sticker of an animated pack to be animated, so this is how a
+     * static sticker can live in the same pack as GIF stickers. Animated input is returned
+     * unchanged; invalid input gives null.
+     */
+    fun staticAsAnimated(webp: ByteArray): ByteArray? {
+        val info = WebpParser.parse(webp) ?: return null
+        if (info.animated) return webp
+        return mux(listOf(Frame(webp, 1000), Frame(webp, 1000)))
+    }
+
+    /**
      * @param loopCount 0 = loop forever.
      * @throws IllegalArgumentException if a frame is not a valid WebP file.
      */

@@ -90,9 +90,6 @@ class PackRepository(context: Context, db: AppDatabase) {
         if (existing.size >= WhatsAppLimits.MAX_STICKERS) {
             throw PackRuleException(PackRuleException.Code.PACK_FULL, WhatsAppLimits.MAX_STICKERS)
         }
-        if (existing.isNotEmpty() && pack.animated != animated) {
-            throw PackRuleException(PackRuleException.Code.MIXED_ANIMATION)
-        }
 
         val id = UUID.randomUUID().toString()
         val fileName = "$id.webp"
@@ -106,7 +103,7 @@ class PackRepository(context: Context, db: AppDatabase) {
         )
         tx {
             dao.insertSticker(sticker)
-            dao.updatePack(pack.copy(animated = animated, imageDataVersion = pack.imageDataVersion + 1, updatedAt = now))
+            dao.updatePack(pack.copy(animated = pack.animated || animated, imageDataVersion = pack.imageDataVersion + 1, updatedAt = now))
         }
         refreshTray(packId)
         sticker
@@ -124,9 +121,6 @@ class PackRepository(context: Context, db: AppDatabase) {
         val old = dao.findSticker(stickerId) ?: return@withContext
         val pack = dao.findPack(old.packId) ?: throw PackRuleException(PackRuleException.Code.PACK_NOT_FOUND)
         val others = dao.stickersOf(old.packId).filter { it.id != stickerId }
-        if (others.isNotEmpty() && pack.animated != animated) {
-            throw PackRuleException(PackRuleException.Code.MIXED_ANIMATION)
-        }
 
         // A new file name means WhatsApp / image caches can never show the old picture.
         val fileName = "${UUID.randomUUID()}.webp"
@@ -142,9 +136,10 @@ class PackRepository(context: Context, db: AppDatabase) {
                     projectJson = projectJson ?: old.projectJson,
                 )
             )
-            dao.updatePack(pack.copy(animated = animated, imageDataVersion = pack.imageDataVersion + 1, updatedAt = now))
+            dao.updatePack(pack.copy(animated = animated || others.any { it.animated }, imageDataVersion = pack.imageDataVersion + 1, updatedAt = now))
         }
         File(paths.packDir(old.packId), old.fileName).delete()
+        File(File(paths.packDir(old.packId), "anim"), old.fileName).delete()
         if (sourceFile != null && old.sourceFile != null && old.sourceFile != sourceFile) {
             paths.source(old.sourceFile).delete()
         }
@@ -160,7 +155,7 @@ class PackRepository(context: Context, db: AppDatabase) {
                 val remaining = dao.stickersOf(s.packId)
                 dao.updatePack(
                     pack.copy(
-                        animated = if (remaining.isEmpty()) false else pack.animated,
+                        animated = remaining.any { it.animated },
                         trayStickerId = if (pack.trayStickerId == stickerId) null else pack.trayStickerId,
                         imageDataVersion = pack.imageDataVersion + 1,
                         updatedAt = System.currentTimeMillis(),

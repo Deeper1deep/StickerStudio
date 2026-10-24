@@ -4,7 +4,20 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.LaunchedEffect
+import com.stickerstudio.app.ui.components.AppCard
+import com.stickerstudio.app.ui.components.IconBadge
+import com.stickerstudio.app.ui.components.StatusPill
+import com.stickerstudio.app.whatsapp.PackIssue
+import com.stickerstudio.app.whatsapp.WhatsAppIntegration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,6 +99,11 @@ fun PackDetailScreen(
     var report by remember { mutableStateOf<ImportReport?>(null) }
     var busy by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
+    var readiness by remember { mutableStateOf<List<PackIssue>?>(null) }
+    LaunchedEffect(pack, stickers) {
+        val p = pack
+        readiness = if (p == null) null else WhatsAppIntegration.validate(repo, p)
+    }
 
     val addPictures = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(30)) { uris ->
         if (uris.isNotEmpty()) scope.launch {
@@ -107,7 +125,7 @@ fun PackDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(pack?.name ?: "") },
+                title = { Text(pack?.name ?: "", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 actions = {
                     Box {
@@ -134,15 +152,55 @@ fun PackDetailScreen(
         Column(Modifier.padding(padding).fillMaxSize()) {
             val p = pack
             if (p != null) {
-                Text(
-                    stringResource(R.string.pack_status, stickers.size, 30) + " · " + p.publisher,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { actions.addToWhatsApp(packId) }, modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.add_to_whatsapp))
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusPill(
+                        stringResource(R.string.pack_status, stickers.size, 30),
+                        MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Text(p.publisher, Modifier.padding(start = 10.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                val ready = readiness
+                if (ready != null) {
+                    val ok = ready.isEmpty()
+                    AppCard(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        onClick = if (ok) null else ({ actions.issues = ready }),
+                    ) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            IconBadge(
+                                if (ok) Icons.Filled.CheckCircle else Icons.Filled.ErrorOutline,
+                                size = 44.dp,
+                                tint = if (ok) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.error,
+                                container = if (ok) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
+                            )
+                            Column {
+                                Text(
+                                    if (ok) stringResource(R.string.pack_ready) else stringResource(R.string.pack_issues, ready.size),
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    stringResource(if (ok) R.string.pack_ready_body else R.string.pack_issues_body),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
+                }
+                if (stickers.any { it.animated } && stickers.any { !it.animated }) {
+                    Text(
+                        stringResource(R.string.pack_mixed_note),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { actions.addToWhatsApp(packId) },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary),
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.add_to_whatsapp)) }
                     OutlinedButton(onClick = { actions.exportZip(packId) }) { Text(stringResource(R.string.export_zip)) }
                 }
             }
@@ -156,11 +214,22 @@ fun PackDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(stickers, key = { it.id }) { s ->
-                        Box {
+                        Box(
+                            Modifier.aspectRatio(1f).clip(RoundedCornerShape(20.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
+                        ) {
                             StickerThumb(
                                 repo.stickerFile(s),
-                                Modifier.aspectRatio(1f).clickable { previewing = s },
+                                Modifier.fillMaxSize().padding(6.dp).clickable { previewing = s },
                             )
+                            if (s.animated) {
+                                StatusPill(
+                                    stringResource(R.string.animated),
+                                    MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
+                                    Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                                )
+                            }
                             Text(
                                 s.emojis,
                                 modifier = Modifier.align(Alignment.BottomStart).padding(4.dp),

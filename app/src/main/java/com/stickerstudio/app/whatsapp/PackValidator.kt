@@ -59,9 +59,6 @@ object PackValidator {
             issues += PackIssue(IssueCode.TOO_MANY_STICKERS, value = stickers.size.toLong(), limit = WhatsAppLimits.MAX_STICKERS.toLong())
         }
 
-        var animatedCount = 0
-        var staticCount = 0
-
         stickers.forEachIndexed { index, s ->
             val n = index + 1
             if (!s.exists) {
@@ -77,7 +74,6 @@ object PackValidator {
                 issues += PackIssue(IssueCode.BAD_DIMENSIONS, n, value = info.width.toLong(), limit = WhatsAppLimits.STICKER_SIZE.toLong())
             }
             if (info.animated) {
-                animatedCount++
                 if (s.sizeBytes > WhatsAppLimits.MAX_ANIMATED_BYTES) {
                     issues += PackIssue(IssueCode.TOO_LARGE, n, s.sizeBytes, WhatsAppLimits.MAX_ANIMATED_BYTES.toLong())
                 }
@@ -88,7 +84,6 @@ object PackValidator {
                     issues += PackIssue(IssueCode.FRAME_TOO_SHORT, n, info.minFrameDurationMs.toLong(), WhatsAppLimits.MIN_FRAME_DURATION_MS.toLong())
                 }
             } else {
-                staticCount++
                 if (s.sizeBytes > WhatsAppLimits.MAX_STATIC_BYTES) {
                     issues += PackIssue(IssueCode.TOO_LARGE, n, s.sizeBytes, WhatsAppLimits.MAX_STATIC_BYTES.toLong())
                 }
@@ -98,8 +93,6 @@ object PackValidator {
                 issues += PackIssue(IssueCode.EMOJI_TOO_MANY, n, s.emojiCount.toLong(), WhatsAppLimits.MAX_EMOJI.toLong())
             }
         }
-
-        if (animatedCount > 0 && staticCount > 0) issues += PackIssue(IssueCode.MIXED_ANIMATION)
 
         if (tray == null || !tray.exists) {
             issues += PackIssue(IssueCode.TRAY_MISSING)

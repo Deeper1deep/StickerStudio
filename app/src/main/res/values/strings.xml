@@ -148,13 +148,19 @@
     <string name="pack_count">%1$d stickers</string>
     <string name="pack_empty_body">WhatsApp needs at least 3 stickers. Add pictures with the + button.</string>
     <string name="pack_empty_title">This pack is empty</string>
+    <string name="pack_issues">%1$d things to fix</string>
+    <string name="pack_issues_body">Tap to see what is missing</string>
+    <string name="pack_mixed_note">This pack mixes static and animated stickers. Static ones are exported as non-moving animated stickers so WhatsApp accepts the pack.</string>
     <string name="pack_name">Pack name</string>
     <string name="pack_not_ready">The pack is not ready for WhatsApp</string>
     <string name="pack_not_ready_hint">Fix these problems, then try again:</string>
     <string name="pack_publisher">Publisher</string>
+    <string name="pack_ready">Pack is ready for WhatsApp</string>
+    <string name="pack_ready_body">All requirements are met</string>
     <string name="pack_status">%1$d of %2$d stickers</string>
     <string name="packs_empty_body">Create your first sticker pack with the + button.</string>
     <string name="packs_empty_title">No packs yet</string>
+    <string name="packs_total">%1$d packs</string>
     <string name="pen_color">Pen colour</string>
     <string name="preview">Preview</string>
     <string name="redo">Redo</string>
@@ -216,6 +222,7 @@
     <string name="update_err_server">GitHub returned an error.</string>
     <string name="update_err_signature">The signing certificate differs from the installed app. File rejected.</string>
     <string name="update_err_size">The downloaded size does not match. File rejected.</string>
+    <string name="update_idle">Tap “Check now” to look for a new version.</string>
     <string name="update_install">Install update</string>
     <string name="update_install_hint">Android will ask you to confirm. Your packs and settings are kept.</string>
     <string name="update_installed">Installed version: %1$s (%2$d)</string>

@@ -5,6 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -127,8 +135,8 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, actio
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("😶", style = MaterialTheme.typography.displayMedium)
-        Spacer(Modifier.height(12.dp))
+        IconBadge(Icons.Filled.AutoAwesome, size = 72.dp)
+        Spacer(Modifier.height(16.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Spacer(Modifier.height(4.dp))
         Text(
@@ -142,6 +150,65 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, actio
             action()
         }
     }
+}
+
+/** Round violet-tinted badge with an icon: the app's standard "icon chip". */
+@Composable
+fun IconBadge(
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    size: Dp = 44.dp,
+    tint: Color = MaterialTheme.colorScheme.primary,
+    container: Color = MaterialTheme.colorScheme.primaryContainer,
+) {
+    Box(
+        modifier.size(size).clip(RoundedCornerShape(size * 0.34f)).background(container),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(size * 0.5f))
+    }
+}
+
+/** White card with a hairline violet-grey border (no heavy shadows). */
+@Composable
+fun AppCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(24.dp)
+    val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    if (onClick == null) {
+        Card(modifier = modifier, shape = shape, colors = colors, border = border, content = content)
+    } else {
+        Card(onClick = onClick, modifier = modifier, shape = shape, colors = colors, border = border, content = content)
+    }
+}
+
+/** Big screen title with an optional subtitle and a trailing action. */
+@Composable
+fun ScreenHeader(title: String, modifier: Modifier = Modifier, subtitle: String? = null, trailing: @Composable (() -> Unit)? = null) {
+    Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.headlineMedium)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (trailing != null) trailing()
+    }
+}
+
+/** Small rounded status label. */
+@Composable
+fun StatusPill(text: String, container: Color, content: Color, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        modifier = modifier.clip(RoundedCornerShape(10.dp)).background(container).padding(horizontal = 10.dp, vertical = 3.dp),
+        style = MaterialTheme.typography.labelMedium,
+        color = content,
+    )
 }
 
 @Composable

@@ -10,6 +10,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import com.stickerstudio.app.ui.components.AppCard
+import com.stickerstudio.app.ui.components.IconBadge
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,45 +56,72 @@ fun UpdatesScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_updates)) },
+                title = { Text(stringResource(R.string.settings_updates), style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             )
         },
     ) { padding ->
-        Column(Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.update_installed, updates.installedVersionName, updates.installedVersionCode))
-
-            when (val s = state) {
-                UpdateUiState.Idle -> Unit
-                UpdateUiState.Checking -> Row { CircularProgressIndicator(Modifier.padding(end = 12.dp)); Text(stringResource(R.string.update_checking)) }
-                UpdateUiState.NotConfigured -> Text(stringResource(R.string.update_not_configured))
-                UpdateUiState.NoRelease -> Text(stringResource(R.string.update_no_release))
-                is UpdateUiState.UpToDate -> Text(stringResource(R.string.update_up_to_date))
-                is UpdateUiState.Failed -> Text(
-                    stringResource(
-                        when (s.kind) {
-                            FailureKind.NETWORK -> R.string.update_err_network
-                            FailureKind.RATE_LIMITED -> R.string.update_err_rate
-                            FailureKind.SERVER -> R.string.update_err_server
-                            FailureKind.INVALID_DATA -> R.string.update_err_invalid
-                            FailureKind.NO_MANIFEST -> R.string.update_err_manifest
-                        },
-                    ),
-                    color = MaterialTheme.colorScheme.error,
-                )
-                is UpdateUiState.Available -> {
-                    Text(stringResource(R.string.update_available_title, s.manifest.versionName), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.update_size_mb, s.manifest.sizeBytes / 1048576.0))
-                    if (s.manifest.changelog.isNotBlank()) {
-                        Text(stringResource(R.string.update_changelog), style = MaterialTheme.typography.titleSmall)
-                        Text(s.manifest.changelog)
-                    }
-                    DownloadSection(updates, download, s)
+        Column(
+            Modifier.padding(padding).padding(horizontal = 20.dp, vertical = 8.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            AppCard(Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    IconBadge(Icons.Filled.Info, size = 44.dp)
+                    Text(stringResource(R.string.update_installed, updates.installedVersionName, updates.installedVersionCode), style = MaterialTheme.typography.bodyLarge)
                 }
             }
 
-            OutlinedButton(onClick = { updates.check() }, enabled = state != UpdateUiState.Checking) {
-                Text(stringResource(R.string.update_check_now))
+            AppCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    when (val s = state) {
+                        UpdateUiState.Idle -> Text(stringResource(R.string.update_idle), style = MaterialTheme.typography.bodyMedium)
+                        UpdateUiState.Checking -> Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(Modifier.padding(end = 12.dp).size(24.dp), strokeWidth = 3.dp)
+                            Text(stringResource(R.string.update_checking))
+                        }
+                        UpdateUiState.NotConfigured -> Text(stringResource(R.string.update_not_configured))
+                        UpdateUiState.NoRelease -> Text(stringResource(R.string.update_no_release))
+                        is UpdateUiState.UpToDate -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            IconBadge(Icons.Filled.CheckCircle, size = 40.dp, tint = MaterialTheme.colorScheme.onSecondaryContainer, container = MaterialTheme.colorScheme.secondaryContainer)
+                            Text(stringResource(R.string.update_up_to_date), style = MaterialTheme.typography.titleSmall)
+                        }
+                        is UpdateUiState.Failed -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            IconBadge(Icons.Filled.ErrorOutline, size = 40.dp, tint = MaterialTheme.colorScheme.error, container = MaterialTheme.colorScheme.errorContainer)
+                            Text(
+                                stringResource(
+                                    when (s.kind) {
+                                        FailureKind.NETWORK -> R.string.update_err_network
+                                        FailureKind.RATE_LIMITED -> R.string.update_err_rate
+                                        FailureKind.SERVER -> R.string.update_err_server
+                                        FailureKind.INVALID_DATA -> R.string.update_err_invalid
+                                        FailureKind.NO_MANIFEST -> R.string.update_err_manifest
+                                    },
+                                ),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        is UpdateUiState.Available -> {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                IconBadge(Icons.Filled.SystemUpdate, size = 44.dp)
+                                Column {
+                                    Text(stringResource(R.string.update_available_title, s.manifest.versionName), style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(R.string.update_size_mb, s.manifest.sizeBytes / 1048576.0), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            if (s.manifest.changelog.isNotBlank()) {
+                                Text(stringResource(R.string.update_changelog), style = MaterialTheme.typography.titleSmall)
+                                Text(s.manifest.changelog, style = MaterialTheme.typography.bodyMedium)
+                            }
+                            DownloadSection(updates, download, s)
+                        }
+                    }
+                }
+            }
+
+            OutlinedButton(onClick = { updates.check() }, enabled = state != UpdateUiState.Checking, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Refresh, null)
+                Text(stringResource(R.string.update_check_now), Modifier.padding(start = 8.dp))
             }
         }
     }

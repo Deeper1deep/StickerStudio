@@ -62,7 +62,7 @@ object WhatsAppIntegration {
     /** Measures the real files of a pack and validates them against WhatsApp's rules. */
     suspend fun validate(repo: PackRepository, pack: PackEntity): List<PackIssue> = withContext(Dispatchers.IO) {
         val stickers = repo.stickersOf(pack.id)
-        val checks = stickers.map { s -> checkSticker(repo, s) }
+        val checks = stickers.map { s -> checkSticker(repo, pack, s) }
 
         val trayFile = repo.trayFile(pack)
         val tray = if (trayFile == null || !trayFile.isFile) {
@@ -75,8 +75,8 @@ object WhatsAppIntegration {
         PackValidator.validate(pack.name, pack.publisher, checks, tray)
     }
 
-    private fun checkSticker(repo: PackRepository, s: StickerEntity): StickerCheck {
-        val file = repo.stickerFile(s)
+    private fun checkSticker(repo: PackRepository, pack: PackEntity, s: StickerEntity): StickerCheck {
+        val file = ExportFiles.resolve(repo.paths.packDir(s.packId), s, pack.animated)
         if (!file.isFile) return StickerCheck(s.fileName, false, 0, null, 0)
         val bytes = file.readBytes()
         val emojiCount = PackRepository.splitEmojis(s.emojis).size
@@ -105,7 +105,7 @@ object WhatsAppIntegration {
             stickers.forEachIndexed { i, s ->
                 val entryName = "stickers/%02d.webp".format(i + 1)
                 zip.putNextEntry(ZipEntry(entryName))
-                zip.write(repo.stickerFile(s).readBytes())
+                zip.write(ExportFiles.resolve(repo.paths.packDir(s.packId), s, pack.animated).readBytes())
                 zip.closeEntry()
                 if (i > 0) json.append(',')
                 json.append("\n    {\"file\": ").append(quote(entryName)).append(", \"emojis\": ").append(quote(s.emojis)).append('}')

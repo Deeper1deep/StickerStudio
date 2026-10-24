@@ -79,9 +79,9 @@ class PackValidatorTest {
     }
 
     @Test
-    fun mixingAnimatedAndStaticIsReported() {
+    fun mixingAnimatedAndStaticIsAllowed() {
         val issues = PackValidator.validate("P", "Me", listOf(ok(1), ok(2), ok(3, animInfo())), goodTray)
-        assertEquals(listOf(IssueCode.MIXED_ANIMATION), codes(issues))
+        assertEquals(emptyList<IssueCode>(), codes(issues))
     }
 
     @Test

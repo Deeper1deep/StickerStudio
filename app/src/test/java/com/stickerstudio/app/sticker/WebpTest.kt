@@ -159,4 +159,17 @@ class WebpTest {
         assertTrue(text.contains("ALPH"))
         assertTrue(text.contains("VP8 "))
     }
+
+    @Test
+    fun staticWebpCanBeWrappedAsNonMovingAnimation() {
+        val wrapped = AnimatedWebpMuxer.staticAsAnimated(staticLossyWithAlpha())!!
+        val info = WebpParser.parse(wrapped)!!
+        assertTrue(info.animated)
+        assertEquals(512, info.width); assertEquals(512, info.height)
+        assertTrue(info.minFrameDurationMs >= 8)
+        assertTrue(info.totalDurationMs <= 10_000)
+        // Already animated input is untouched; garbage is rejected.
+        assertTrue(AnimatedWebpMuxer.staticAsAnimated(wrapped) === wrapped)
+        assertEquals(null, AnimatedWebpMuxer.staticAsAnimated(byteArrayOf(1, 2, 3)))
+    }
 }

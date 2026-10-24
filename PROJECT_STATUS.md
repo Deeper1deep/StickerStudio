@@ -14,7 +14,8 @@
 ## Update 2026-10-24
 - CI **Build & test passed** on GitHub for commit 306973e (unit tests + debug APK build). JVM crop tests: 63 pass.
 - New: unified picker (image/GIF/video), live looping preview in the animated editor, aspect/free crop, new theme/home/create/editor design.
-- Still not verified on a device: crop gestures, live preview smoothness, new screens' look.
+- Round 3: all screens redesigned, new icon, mixed static/animated packs (JVM-tested logic; UI verified only by CI build).
+- Still not verified on a device: new icon look, mixed-pack export in WhatsApp, crop gestures, live preview smoothness, new screens' look.
 
 ## NOT verified
 - **Any compilation of Android-dependent code** (no Android SDK, Maven/Google blocked here): data, UI, renderer, encoder, converter, provider, updater network/verifier.

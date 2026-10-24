@@ -1,6 +1,7 @@
 package com.stickerstudio.app.ui.screens
 
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,11 +9,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,15 +30,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import com.stickerstudio.app.BuildConfig
 import com.stickerstudio.app.R
 import com.stickerstudio.app.container
 import com.stickerstudio.app.data.ThemeMode
+import com.stickerstudio.app.ui.components.AppCard
+import com.stickerstudio.app.ui.components.IconBadge
+import com.stickerstudio.app.ui.components.ScreenHeader
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,69 +54,85 @@ fun SettingsScreen(onOpenUpdates: () -> Unit) {
     val savedPublisher by settings.defaultPublisher.collectAsState(initial = "")
     var publisher by remember { mutableStateOf("") }
     LaunchedEffect(savedPublisher) { if (publisher.isEmpty()) publisher = savedPublisher }
-
     val currentLang = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-')
 
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Text(stringResource(R.string.nav_settings), style = MaterialTheme.typography.headlineSmall)
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+        ScreenHeader(stringResource(R.string.nav_settings))
 
-        Header(R.string.settings_theme)
-        listOf(
-            ThemeMode.SYSTEM to R.string.theme_system,
-            ThemeMode.LIGHT to R.string.theme_light,
-            ThemeMode.DARK to R.string.theme_dark,
-        ).forEach { (mode, label) ->
-            Choice(stringResource(label), theme == mode) { scope.launch { settings.setTheme(mode) } }
-        }
-
-        HorizontalDivider(Modifier.padding(vertical = 12.dp))
-        Header(R.string.settings_language)
-        listOf("" to R.string.lang_system, "ar" to R.string.lang_ar, "en" to R.string.lang_en).forEach { (tag, label) ->
-            Choice(stringResource(label), currentLang == tag) {
-                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Group(Icons.Filled.DarkMode, R.string.settings_theme) {
+                ChipRow(
+                    listOf(
+                        Triple(ThemeMode.SYSTEM, R.string.theme_system, theme == ThemeMode.SYSTEM),
+                        Triple(ThemeMode.LIGHT, R.string.theme_light, theme == ThemeMode.LIGHT),
+                        Triple(ThemeMode.DARK, R.string.theme_dark, theme == ThemeMode.DARK),
+                    ),
+                ) { mode -> scope.launch { settings.setTheme(mode) } }
             }
+
+            Group(Icons.Filled.Language, R.string.settings_language) {
+                ChipRow(
+                    listOf(
+                        Triple("", R.string.lang_system, currentLang == ""),
+                        Triple("ar", R.string.lang_ar, currentLang == "ar"),
+                        Triple("en", R.string.lang_en, currentLang == "en"),
+                    ),
+                ) { tag -> AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag)) }
+            }
+
+            Group(Icons.Filled.Person, R.string.settings_publisher) {
+                OutlinedTextField(
+                    value = publisher,
+                    onValueChange = { publisher = it.take(60); scope.launch { settings.setDefaultPublisher(it.take(60)) } },
+                    label = { Text(stringResource(R.string.pack_publisher)) },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            Group(Icons.Filled.SystemUpdate, R.string.settings_updates) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.settings_auto_update), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                    Switch(checked = auto, onCheckedChange = { scope.launch { settings.setAutoUpdateCheck(it) } })
+                }
+                OutlinedButton(onClick = onOpenUpdates, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_open_updates)) }
+            }
+
+            Text(
+                stringResource(R.string.settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+            Text(
+                stringResource(R.string.settings_privacy),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
         }
-
-        HorizontalDivider(Modifier.padding(vertical = 12.dp))
-        Header(R.string.settings_publisher)
-        OutlinedTextField(
-            value = publisher,
-            onValueChange = { publisher = it.take(60); scope.launch { settings.setDefaultPublisher(it.take(60)) } },
-            label = { Text(stringResource(R.string.pack_publisher)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        HorizontalDivider(Modifier.padding(vertical = 12.dp))
-        Header(R.string.settings_updates)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.settings_auto_update), Modifier.weight(1f))
-            Switch(checked = auto, onCheckedChange = { scope.launch { settings.setAutoUpdateCheck(it) } })
-        }
-        OutlinedButton(onClick = onOpenUpdates, modifier = Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.settings_open_updates)) }
-
-        HorizontalDivider(Modifier.padding(vertical = 12.dp))
-        Text(
-            stringResource(R.string.settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(stringResource(R.string.settings_privacy), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun Header(res: Int) {
-    Text(stringResource(res), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+private fun Group(icon: ImageVector, title: Int, content: @Composable () -> Unit) {
+    AppCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                IconBadge(icon, size = 40.dp)
+                Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
+            }
+            content()
+        }
+    }
 }
 
 @Composable
-private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().selectable(selected, onClick = onClick, role = Role.RadioButton),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Text(label, Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp))
+private fun <T> ChipRow(items: List<Triple<T, Int, Boolean>>, onSelect: (T) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEach { (value, label, selected) ->
+            FilterChip(selected = selected, onClick = { onSelect(value) }, label = { Text(stringResource(label)) })
+        }
     }
 }
