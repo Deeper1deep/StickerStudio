@@ -11,6 +11,11 @@
 - All XML resources/manifest are well-formed; both workflow files are valid YAML.
 - Gradle wrapper files generated (8.9).
 
+## Update 2026-10-24
+- CI **Build & test passed** on GitHub for commit 306973e (unit tests + debug APK build). JVM crop tests: 63 pass.
+- New: unified picker (image/GIF/video), live looping preview in the animated editor, aspect/free crop, new theme/home/create/editor design.
+- Still not verified on a device: crop gestures, live preview smoothness, new screens' look.
+
 ## NOT verified
 - **Any compilation of Android-dependent code** (no Android SDK, Maven/Google blocked here): data, UI, renderer, encoder, converter, provider, updater network/verifier.
 - No APK built; no instrumented tests run (`androidTest` is written only); no run on a device/emulator.
