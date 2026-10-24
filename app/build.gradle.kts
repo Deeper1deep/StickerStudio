@@ -12,7 +12,6 @@ val updateRepoOwner: String = providers.gradleProperty("UPDATE_REPO_OWNER").orEl
 val updateRepoName: String = providers.gradleProperty("UPDATE_REPO_NAME").orElse("StickerStudio").get()
 
 // ---- Release signing: read from Gradle properties or environment ------------
-// Nothing secret lives in this repository. CI injects these from GitHub Secrets.
 fun signingValue(name: String): String? =
     providers.gradleProperty(name).orNull ?: System.getenv(name)
 
@@ -24,7 +23,6 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        // NEVER change applicationId after the first public release.
         applicationId = "com.stickerstudio.app"
         minSdk = 26
         targetSdk = 35
@@ -50,9 +48,6 @@ android {
 
     buildTypes {
         release {
-            // R8 is off on purpose for the first releases: it was not possible to
-            // test shrinking rules together with Room/ML Kit/Coil in the authoring
-            // environment. Turn it on once a signed build has been verified.
             isMinifyEnabled = false
             isShrinkResources = false
             if (hasReleaseKeystore) {
@@ -88,7 +83,6 @@ android {
     }
 
     sourceSets {
-        // Room schema JSON is used by migration tests.
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
     }
 }
@@ -115,6 +109,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     implementation("androidx.room:room-runtime:2.6.1")
@@ -127,7 +122,6 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-gif:2.7.0")
 
-    // On-device person segmentation (model is bundled, nothing is uploaded).
     implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta6")
 
     testImplementation("junit:junit:4.13.2")
