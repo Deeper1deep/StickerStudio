@@ -108,13 +108,15 @@ fun CreateScreen(
         } catch (e: Exception) {
             null
         }
-        val name = try {
+        var name: String? = null
+        try {
             context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-                if (c.moveToFirst()) c.getString(0) else null
+                if (c.moveToFirst()) name = c.getString(0)
             }
         } catch (e: Exception) {
-            null
-        } ?: uri.lastPathSegment
+            name = null
+        }
+        if (name == null) name = uri.lastPathSegment
         return MediaKind.detect(header, context.contentResolver.getType(uri), name)
     }
 
