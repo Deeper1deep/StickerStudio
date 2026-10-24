@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Packs are large and device-specific; Android auto-backup is off (the in-app ZIP is the backup). -->
+<data-extraction-rules>
+    <cloud-backup><exclude domain="root" /></cloud-backup>
+    <device-transfer><include domain="root" /></device-transfer>
+</data-extraction-rules>

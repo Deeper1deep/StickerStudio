@@ -1,0 +1,24 @@
+# Gradle / Android
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing material: NEVER commit these
+*.jks
+*.keystore
+*.p12
+keystore.properties
+signing.properties
+*.base64
+secrets/
+
+# Generated release artifacts
+*.apk
+*.aab
+update.json

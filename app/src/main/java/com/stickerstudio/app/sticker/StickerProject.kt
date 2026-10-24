@@ -1,0 +1,78 @@
+package com.stickerstudio.app.sticker
+
+/**
+ * The complete, serialisable description of how a static sticker is built from its source
+ * bitmap. It is stored with every saved sticker so the sticker can be re-opened and edited
+ * later, and it is the single input of [StickerRenderer].
+ *
+ * Coordinates are in the 512x512 sticker space. Colours are ARGB ints.
+ */
+object Colors {
+    const val WHITE: Int = -1               // 0xFFFFFFFF
+    const val BLACK: Int = -16777216        // 0xFF000000
+}
+
+enum class MaskKind { NONE, CIRCLE, ROUNDED }
+enum class LayerKind { TEXT, SHAPE }
+enum class ShapeKind { CIRCLE, RECT, STAR, HEART }
+
+data class Xform(
+    val scale: Float = 1f,
+    val dx: Float = 0f,
+    val dy: Float = 0f,
+    val rotation: Float = 0f,
+    val flipX: Boolean = false,
+    val flipY: Boolean = false,
+)
+
+data class OutlineSpec(
+    val enabled: Boolean = false,
+    val color: Int = Colors.WHITE,
+    val width: Float = 8f,
+)
+
+/** Freehand pen stroke. [points] = x0,y0,x1,y1,... */
+data class PenStroke(val color: Int, val width: Float, val points: List<Float>)
+
+/** Eraser (or "restore") brush stroke applied on the transformed image. */
+data class EraseStroke(val restore: Boolean, val radius: Float, val points: List<Float>)
+
+/** A text / emoji layer or a shape layer. [size] is the font size (text) or shape size (shape). */
+data class Layer(
+    val id: String,
+    val kind: LayerKind,
+    val text: String = "",
+    val color: Int = Colors.WHITE,
+    val size: Float = 72f,
+    val bold: Boolean = true,
+    val italic: Boolean = false,
+    val font: Int = 0,
+    val strokeColor: Int = Colors.BLACK,
+    val strokeWidth: Float = 0f,
+    val shadow: Boolean = false,
+    val shape: ShapeKind = ShapeKind.CIRCLE,
+    val x: Float = 256f,
+    val y: Float = 256f,
+    val scale: Float = 1f,
+    val rotation: Float = 0f,
+)
+
+data class StickerProject(
+    val xform: Xform = Xform(),
+    val opacity: Float = 1f,
+    val mask: MaskKind = MaskKind.NONE,
+    val erase: List<EraseStroke> = emptyList(),
+    val outline: OutlineSpec = OutlineSpec(),
+    val shadow: Boolean = false,
+    val layers: List<Layer> = emptyList(),
+    val pen: List<PenStroke> = emptyList(),
+)
+
+/** Settings of an animated sticker (GIF / video source). */
+data class AnimatedSettings(
+    val startMs: Long = 0L,
+    val durationMs: Long = 3000L,
+    val fps: Int = 12,
+    val cover: Boolean = false,
+    val caption: String = "",
+)

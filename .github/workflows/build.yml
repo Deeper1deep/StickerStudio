@@ -1,0 +1,33 @@
+name: Build & test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+      - name: Debug APK (debug-signed, for testing only)
+        run: ./gradlew assembleDebug --stacktrace -PUPDATE_REPO_OWNER=${{ github.repository_owner }} -PUPDATE_REPO_NAME=${{ github.event.repository.name }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: app/build/reports/tests/

@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Original sticker-with-peeling-corner glyph (own design) -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M30,34 a6,6 0 0 1 6,-6 H72 a6,6 0 0 1 6,6 V60 L60,78 H36 a6,6 0 0 1 -6,-6 Z" />
+    <path android:fillColor="#FFD7CCFF" android:pathData="M60,78 L60,66 a6,6 0 0 1 6,-6 H78 Z" />
+    <path android:fillColor="#FF5B3FE0" android:pathData="M42,44 a4,4 0 1 0 0.01,0 Z M60,44 a4,4 0 1 0 0.01,0 Z" />
+    <path android:strokeColor="#FF5B3FE0" android:strokeWidth="3.5" android:strokeLineCap="round"
+        android:pathData="M41,56 Q51,64 61,56" />
+</vector>
