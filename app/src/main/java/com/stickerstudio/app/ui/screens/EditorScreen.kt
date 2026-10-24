@@ -28,7 +28,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Crop
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import com.stickerstudio.app.sticker.CropMath
+import com.stickerstudio.app.ui.components.CropEditor
+import com.stickerstudio.app.ui.components.CropPresetChips
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,6 +54,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Slider
@@ -157,13 +172,19 @@ fun EditorScreen(
                 )
                 else -> Column(Modifier.fillMaxSize()) {
                     PreviewArea(vm, ui)
-                    ToolTabs(ui.tool, vm::selectTool)
-                    Column(
-                        Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
                     ) {
-                        ToolPanel(vm, ui)
+                        Column(
+                            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            ToolPanel(vm, ui)
+                        }
                     }
+                    ToolTabs(ui.tool, vm::selectTool)
                 }
             }
             if (ui.busy) {
@@ -219,6 +240,9 @@ private fun PreviewArea(vm: EditorViewModel, ui: EditorUi) {
                 .checkerboard()
                 .pointerInput(ui.tool) {
                     val toSticker = StickerSpace.SIZE / size.width.toFloat()
+                    if (ui.tool == Tool.CROP) {
+                        return@pointerInput
+                    }
                     if (ui.tool == Tool.ERASE || ui.tool == Tool.DRAW) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
@@ -254,7 +278,18 @@ private fun PreviewArea(vm: EditorViewModel, ui: EditorUi) {
                 },
         ) {
             val preview = ui.preview
-            if (preview != null) {
+            val cropSource = ui.source
+            if (ui.tool == Tool.CROP && cropSource != null) {
+                CropEditor(
+                    bitmap = cropSource,
+                    crop = ui.project.crop,
+                    aspect = ui.cropAspect,
+                    onChange = vm::setCrop,
+                    onGestureStart = vm::beginGesture,
+                    onGestureEnd = vm::endGesture,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (preview != null) {
                 Image(
                     bitmap = preview.asImageBitmap(),
                     contentDescription = stringResource(R.string.preview),
@@ -275,37 +310,60 @@ private object StickerSpace {
 
 @Composable
 private fun ToolTabs(selected: Tool, onSelect: (Tool) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(Tool.entries.toList()) { tool ->
-            FilterChip(
-                selected = tool == selected,
-                onClick = { onSelect(tool) },
-                label = {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items(Tool.entries.toList()) { tool ->
+                val (icon, label) = toolVisual(tool)
+                val active = tool == selected
+                Column(
+                    Modifier
+                        .widthIn(min = 68.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .selectable(active, role = Role.Tab, onClick = { onSelect(tool) })
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Surface(
+                        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Icon(
+                            icon, null,
+                            tint = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
+                        )
+                    }
                     Text(
-                        stringResource(
-                            when (tool) {
-                                Tool.IMAGE -> R.string.tool_image
-                                Tool.BACKGROUND -> R.string.tool_background
-                                Tool.ERASE -> R.string.tool_erase
-                                Tool.TEXT -> R.string.tool_text
-                                Tool.SHAPES -> R.string.tool_shapes
-                                Tool.DRAW -> R.string.tool_draw
-                                Tool.EFFECTS -> R.string.tool_effects
-                            },
-                        ),
+                        stringResource(label),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Medium,
+                        color = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                },
-            )
+                }
+            }
         }
     }
+}
+
+private fun toolVisual(tool: Tool): Pair<ImageVector, Int> = when (tool) {
+    Tool.CROP -> Icons.Filled.Crop to R.string.tool_crop
+    Tool.IMAGE -> Icons.Filled.Image to R.string.tool_image
+    Tool.BACKGROUND -> Icons.Filled.AutoFixHigh to R.string.tool_background
+    Tool.ERASE -> Icons.Filled.CleaningServices to R.string.tool_erase
+    Tool.TEXT -> Icons.Filled.TextFields to R.string.tool_text
+    Tool.SHAPES -> Icons.Filled.Category to R.string.tool_shapes
+    Tool.DRAW -> Icons.Filled.Brush to R.string.tool_draw
+    Tool.EFFECTS -> Icons.Filled.AutoAwesome to R.string.tool_effects
 }
 
 @Composable
 private fun ToolPanel(vm: EditorViewModel, ui: EditorUi) {
     when (ui.tool) {
+        Tool.CROP -> CropPanel(vm, ui)
         Tool.IMAGE -> ImagePanel(vm, ui)
         Tool.BACKGROUND -> BackgroundPanel(vm, ui)
         Tool.ERASE -> ErasePanel(vm, ui)
@@ -344,6 +402,20 @@ private fun Hint(text: String) {
 }
 
 @Composable
+private fun CropPanel(vm: EditorViewModel, ui: EditorUi) {
+    val src = ui.source
+    if (src == null) {
+        Hint(stringResource(R.string.hint_no_image))
+        return
+    }
+    Hint(stringResource(R.string.crop_hint, src.width, src.height))
+    CropPresetChips(ui.cropPreset, { vm.setCropPreset(it) })
+    OutlinedButton(onClick = { vm.setCropPreset(com.stickerstudio.app.ui.components.CropPreset.ORIGINAL) }) {
+        Text(stringResource(R.string.crop_reset))
+    }
+}
+
+@Composable
 private fun ImagePanel(vm: EditorViewModel, ui: EditorUi) {
     val x = ui.project.xform
     if (ui.source == null) {
@@ -365,7 +437,7 @@ private fun ImagePanel(vm: EditorViewModel, ui: EditorUi) {
         OutlinedButton(onClick = { vm.apply { it.copy(xform = it.xform.copy(scale = 1f, dx = 0f, dy = 0f)) } }) { Text(stringResource(R.string.fit)) }
         if (src != null) {
             OutlinedButton(onClick = {
-                vm.apply { it.copy(xform = it.xform.copy(scale = StickerRenderer.coverScale(src.width, src.height), dx = 0f, dy = 0f)) }
+                vm.apply { it.copy(xform = it.xform.copy(scale = CropMath.pixels(ui.project.crop, src.width, src.height).let { px -> StickerRenderer.coverScale(px[2], px[3]) }, dx = 0f, dy = 0f)) }
             }) { Text(stringResource(R.string.fill)) }
         }
     }

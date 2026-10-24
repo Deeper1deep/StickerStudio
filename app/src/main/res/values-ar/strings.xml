@@ -16,6 +16,7 @@
     <string name="anim_limits">ملصقات واتساب المتحركة: 512x512 وحتى 10 ثوانٍ و500 ك.ب.</string>
     <string name="anim_pick">اختر GIF أو فيديو</string>
     <string name="anim_start">البداية عند %1$.1f ث</string>
+    <string name="anim_static">اجعله ملصقًا ثابتًا</string>
     <string name="animated">متحرك</string>
     <string name="app_name">ستيكر ستوديو</string>
     <string name="back">رجوع</string>
@@ -39,6 +40,8 @@
     <string name="clear_erasing">مسح التعديلات</string>
     <string name="create_animated">ملصق متحرك</string>
     <string name="create_animated_hint">حوّل GIF أو فيديو</string>
+    <string name="create_animated_skipped">الملفات المتحركة (GIF / فيديو) تُضاف واحدًا واحدًا، وتم تخطيها من هذه الدفعة.</string>
+    <string name="create_auto_hint">الصور تفتح محرر الصور، والـ GIF والفيديو يبقيان متحركين ويتحركان في المعاينة مباشرة.</string>
     <string name="create_batch">إضافة عدة صور</string>
     <string name="create_batch_hint">كل صورة تصبح ملصق 512x512</string>
     <string name="create_blank">ملصق نص / إيموجي</string>
@@ -49,8 +52,16 @@
     <string name="create_files_hint">أي ملف صورة على الجهاز</string>
     <string name="create_gallery">من المعرض</string>
     <string name="create_gallery_hint">اختر صورة وعدّلها</string>
+    <string name="create_pick_hint">الـ GIF والفيديو يفتحان في المحرر المتحرك تلقائيًا</string>
+    <string name="create_pick_title">صورة · GIF · فيديو</string>
+    <string name="create_subtitle">اختر أي ملف، والتطبيق يعرف نوعه وحده.</string>
     <string name="create_target">الحفظ في حزمة</string>
     <string name="create_title">إنشاء ملصق</string>
+    <string name="crop_done">تم</string>
+    <string name="crop_free">حر</string>
+    <string name="crop_hint">اسحب الإطار. القص يتبع شكل صورتك الأصلية (%1$d × %2$d) والملف النهائي يتوسط لوحة شفافة 512×512 بدون تمطيط.</string>
+    <string name="crop_original">الأصلي</string>
+    <string name="crop_reset">إعادة ضبط القص</string>
     <string name="crop_shape">شكل القص</string>
     <string name="delete">حذف</string>
     <string name="delete_layer">حذف العنصر</string>
@@ -92,6 +103,8 @@
     <string name="home_drafts">ملصقات غير مكتملة</string>
     <string name="home_empty_body">أنشئ حزمة وأضف صورًا وأرسلها إلى واتساب.</string>
     <string name="home_empty_title">اصنع أول ملصقاتك</string>
+    <string name="home_hero">حوّل أي صورة أو GIF لملصق واتساب</string>
+    <string name="home_hero_button">ملصق جديد</string>
     <string name="home_my_packs">حزمي</string>
     <string name="import_done">تمت إضافة %1$d ملصق.</string>
     <string name="import_failed">تعذرت قراءة %1$d صورة.</string>
@@ -175,6 +188,7 @@
     <string name="theme_system">حسب النظام</string>
     <string name="tolerance">التسامح</string>
     <string name="tool_background">الخلفية</string>
+    <string name="tool_crop">قص</string>
     <string name="tool_draw">رسم</string>
     <string name="tool_effects">تأثيرات</string>
     <string name="tool_erase">الممحاة</string>

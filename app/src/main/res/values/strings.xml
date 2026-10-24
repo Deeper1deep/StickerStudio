@@ -16,6 +16,7 @@
     <string name="anim_limits">WhatsApp animated stickers: 512x512, up to 10 seconds and 500 KB.</string>
     <string name="anim_pick">Choose GIF or video</string>
     <string name="anim_start">Start at %1$.1f s</string>
+    <string name="anim_static">Make it a still sticker</string>
     <string name="animated">Animated</string>
     <string name="app_name">Sticker Studio</string>
     <string name="back">Back</string>
@@ -39,6 +40,8 @@
     <string name="clear_erasing">Clear erasing</string>
     <string name="create_animated">Animated sticker</string>
     <string name="create_animated_hint">Convert a GIF or video</string>
+    <string name="create_animated_skipped">Animated files (GIF / video) are added one at a time; they were skipped from this batch.</string>
+    <string name="create_auto_hint">Pictures open the picture editor; GIF and video stay animated and play live in the preview.</string>
     <string name="create_batch">Add many pictures</string>
     <string name="create_batch_hint">Each picture becomes a 512x512 sticker</string>
     <string name="create_blank">Text / emoji sticker</string>
@@ -49,8 +52,16 @@
     <string name="create_files_hint">Any image file on the device</string>
     <string name="create_gallery">From gallery</string>
     <string name="create_gallery_hint">Pick one picture and edit it</string>
+    <string name="create_pick_hint">GIF and video open in the animated editor automatically</string>
+    <string name="create_pick_title">Picture · GIF · Video</string>
+    <string name="create_subtitle">Pick any file. The app recognises its type by itself.</string>
     <string name="create_target">Save into pack</string>
     <string name="create_title">Create a sticker</string>
+    <string name="crop_done">Done</string>
+    <string name="crop_free">Free</string>
+    <string name="crop_hint">Drag the frame. It follows your picture\'s own shape (%1$d × %2$d); the final file is centred on a transparent 512×512 canvas without stretching.</string>
+    <string name="crop_original">Original</string>
+    <string name="crop_reset">Reset crop</string>
     <string name="crop_shape">Crop shape</string>
     <string name="delete">Delete</string>
     <string name="delete_layer">Delete item</string>
@@ -92,6 +103,8 @@
     <string name="home_drafts">Unfinished stickers</string>
     <string name="home_empty_body">Create a pack, add pictures and send it to WhatsApp.</string>
     <string name="home_empty_title">Make your first stickers</string>
+    <string name="home_hero">Turn any picture or GIF into a WhatsApp sticker</string>
+    <string name="home_hero_button">New sticker</string>
     <string name="home_my_packs">My packs</string>
     <string name="import_done">%1$d stickers added.</string>
     <string name="import_failed">%1$d pictures could not be read.</string>
@@ -175,6 +188,7 @@
     <string name="theme_system">Follow system</string>
     <string name="tolerance">Tolerance</string>
     <string name="tool_background">Background</string>
+    <string name="tool_crop">Crop</string>
     <string name="tool_draw">Draw</string>
     <string name="tool_effects">Effects</string>
     <string name="tool_erase">Eraser</string>

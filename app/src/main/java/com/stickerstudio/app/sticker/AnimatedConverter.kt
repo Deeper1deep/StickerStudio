@@ -119,9 +119,11 @@ object AnimatedConverter {
                 size = 64f, strokeColor = Colors.BLACK, strokeWidth = 5f, x = 256f, y = 440f,
             )
         )
+        val px = CropMath.pixels(settings.crop, src.width, src.height)
         return StickerProject(
-            xform = Xform(scale = if (settings.cover) StickerRenderer.coverScale(src.width, src.height) else 1f),
+            xform = Xform(scale = if (settings.cover) StickerRenderer.coverScale(px[2], px[3]) else 1f),
             layers = layers,
+            crop = settings.crop,
         )
     }
 

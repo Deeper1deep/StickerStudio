@@ -16,6 +16,16 @@ enum class MaskKind { NONE, CIRCLE, ROUNDED }
 enum class LayerKind { TEXT, SHAPE }
 enum class ShapeKind { CIRCLE, RECT, STAR, HEART }
 
+/** Crop rectangle as fractions (0..1) of the source image: left, top, right, bottom. */
+data class CropRect(
+    val l: Float = 0f,
+    val t: Float = 0f,
+    val r: Float = 1f,
+    val b: Float = 1f,
+) {
+    val isFull: Boolean get() = l <= 0.001f && t <= 0.001f && r >= 0.999f && b >= 0.999f
+}
+
 data class Xform(
     val scale: Float = 1f,
     val dx: Float = 0f,
@@ -66,6 +76,7 @@ data class StickerProject(
     val shadow: Boolean = false,
     val layers: List<Layer> = emptyList(),
     val pen: List<PenStroke> = emptyList(),
+    val crop: CropRect = CropRect(),
 )
 
 /** Settings of an animated sticker (GIF / video source). */
@@ -75,4 +86,5 @@ data class AnimatedSettings(
     val fps: Int = 12,
     val cover: Boolean = false,
     val caption: String = "",
+    val crop: CropRect = CropRect(),
 )

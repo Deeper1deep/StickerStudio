@@ -47,6 +47,7 @@ object ProjectJson {
             "pen" to p.pen.map {
                 linkedMapOf<String, Any?>("color" to it.color, "width" to it.width, "points" to it.points)
             },
+            "crop" to cropMap(p.crop),
         )
     )
 
@@ -54,6 +55,7 @@ object ProjectJson {
         linkedMapOf<String, Any?>(
             "v" to VERSION, "startMs" to a.startMs, "durationMs" to a.durationMs,
             "fps" to a.fps, "cover" to a.cover, "caption" to a.caption,
+            "crop" to cropMap(a.crop),
         )
     )
 
@@ -114,6 +116,7 @@ object ProjectJson {
                 val m = e.asObject() ?: return@mapNotNull null
                 PenStroke(m.optInt("color", Colors.BLACK), m.optFloat("width", 8f), floats(m["points"]))
             },
+            crop = decodeCrop(root["crop"].asObject()),
         )
     }
 
@@ -130,7 +133,21 @@ object ProjectJson {
             fps = m.optInt("fps", 12).coerceIn(5, 30),
             cover = m.optBool("cover", false),
             caption = m.optString("caption") ?: "",
+            crop = decodeCrop(m["crop"].asObject()),
         )
+    }
+
+    private fun cropMap(c: CropRect): Map<String, Any?> =
+        linkedMapOf<String, Any?>("l" to c.l, "t" to c.t, "r" to c.r, "b" to c.b)
+
+    /** Invalid or missing crops fall back to "no crop" so old projects keep opening. */
+    private fun decodeCrop(m: Map<String, Any?>?): CropRect {
+        if (m == null) return CropRect()
+        val l = m.optFloat("l", 0f).coerceIn(0f, 1f)
+        val t = m.optFloat("t", 0f).coerceIn(0f, 1f)
+        val r = m.optFloat("r", 1f).coerceIn(0f, 1f)
+        val b = m.optFloat("b", 1f).coerceIn(0f, 1f)
+        return if (r - l < 0.02f || b - t < 0.02f) CropRect() else CropRect(l, t, r, b)
     }
 
     private fun floats(v: Any?): List<Float> =

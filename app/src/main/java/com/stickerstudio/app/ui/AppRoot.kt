@@ -47,12 +47,13 @@ object Routes {
     const val UPDATES = "updates"
     const val PACK = "pack/{packId}"
     const val EDITOR = "editor?source={source}&pack={pack}&sticker={sticker}&draft={draft}"
-    const val ANIMATED = "animated?pack={pack}"
+    const val ANIMATED = "animated?pack={pack}&source={source}&video={video}"
 
     fun pack(id: String) = "pack/$id"
     fun editor(source: String = "", pack: String = "", sticker: String = "", draft: String = "") =
         "editor?source=${Uri.encode(source)}&pack=${Uri.encode(pack)}&sticker=${Uri.encode(sticker)}&draft=${Uri.encode(draft)}"
-    fun animated(pack: String = "") = "animated?pack=${Uri.encode(pack)}"
+    fun animated(pack: String = "", source: String = "", video: Boolean = false) =
+        "animated?pack=${Uri.encode(pack)}&source=${Uri.encode(source)}&video=${if (video) "1" else ""}"
 }
 
 /** Copies a picked picture into the app's private source folder (re-editable later). Null on failure. */
@@ -121,7 +122,7 @@ fun AppRoot() {
                 CreateScreen(
                     onEditor = { source, pack -> nav.navigate(Routes.editor(source = source, pack = pack)) },
                     onBlankEditor = { pack -> nav.navigate(Routes.editor(pack = pack)) },
-                    onAnimated = { pack -> nav.navigate(Routes.animated(pack)) },
+                    onAnimated = { pack, source, video -> nav.navigate(Routes.animated(pack, source, video)) },
                     onOpenPack = { nav.navigate(Routes.pack(it)) },
                 )
             }
@@ -147,21 +148,35 @@ fun AppRoot() {
                 },
             ) { entry ->
                 val a = entry.arguments
-                EditorScreen(
-                    sourceName = a?.getString("source").orEmpty(),
-                    packId = a?.getString("pack").orEmpty(),
-                    stickerId = a?.getString("sticker").orEmpty(),
-                    draftId = a?.getString("draft").orEmpty(),
-                    onClose = { nav.popBackStack() },
-                )
+                // The editor is always dark so the sticker colours stand out.
+                com.stickerstudio.app.ui.theme.StickerStudioTheme(darkTheme = true) {
+                    androidx.compose.material3.Surface(color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
+                        EditorScreen(
+                            sourceName = a?.getString("source").orEmpty(),
+                            packId = a?.getString("pack").orEmpty(),
+                            stickerId = a?.getString("sticker").orEmpty(),
+                            draftId = a?.getString("draft").orEmpty(),
+                            onClose = { nav.popBackStack() },
+                        )
+                    }
+                }
             }
             composable(
                 Routes.ANIMATED,
-                arguments = listOf(navArgument("pack") { type = NavType.StringType; defaultValue = "" }),
+                arguments = listOf("pack", "source", "video").map {
+                    navArgument(it) { type = NavType.StringType; defaultValue = "" }
+                },
             ) { entry ->
+                val pack = entry.arguments?.getString("pack").orEmpty()
                 AnimatedScreen(
-                    packId = entry.arguments?.getString("pack").orEmpty(),
+                    packId = pack,
+                    source = entry.arguments?.getString("source").orEmpty(),
+                    isVideo = entry.arguments?.getString("video").orEmpty() == "1",
                     onClose = { nav.popBackStack() },
+                    onStatic = { name ->
+                        nav.popBackStack()
+                        nav.navigate(Routes.editor(source = name, pack = pack))
+                    },
                 )
             }
         }

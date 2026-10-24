@@ -20,7 +20,10 @@ import com.stickerstudio.app.sticker.ShapeKind
 import com.stickerstudio.app.sticker.StickerEncoder
 import com.stickerstudio.app.sticker.StickerProject
 import com.stickerstudio.app.sticker.StickerRenderer
+import com.stickerstudio.app.sticker.CropRect
 import com.stickerstudio.app.ui.StickerImport
+import com.stickerstudio.app.ui.components.CropPreset
+import com.stickerstudio.app.ui.components.resolve
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,7 +34,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class Tool { IMAGE, BACKGROUND, ERASE, TEXT, SHAPES, DRAW, EFFECTS }
+enum class Tool { CROP, IMAGE, BACKGROUND, ERASE, TEXT, SHAPES, DRAW, EFFECTS }
 
 /** One-shot messages shown as a snackbar / dialog. [res] is a string resource id. */
 data class EditorMessage(val res: Int, val nonce: Long = System.nanoTime())
@@ -54,6 +57,8 @@ data class EditorUi(
     val message: EditorMessage? = null,
     val finished: Boolean = false,
     val dirty: Boolean = false,
+    val cropPreset: CropPreset = CropPreset.ORIGINAL,
+    val cropAspect: Float? = null,
     val editingExisting: Boolean = false,
 )
 
@@ -229,6 +234,19 @@ class EditorViewModel(
     fun setPenColor(color: Int) = _ui.update { it.copy(penColor = color) }
     fun setPenWidth(width: Float) = _ui.update { it.copy(penWidth = width) }
     fun consumeMessage() = _ui.update { it.copy(message = null) }
+
+    // ------------------------------------------------------------------ crop
+
+    /** Picks an aspect preset: resets the frame to the largest centred frame of that shape. */
+    fun setCropPreset(preset: CropPreset) {
+        val src = _ui.value.source ?: return
+        val (rect, aspect) = preset.resolve(src.width, src.height, _ui.value.project.crop)
+        apply { it.copy(crop = rect) }
+        _ui.update { it.copy(cropPreset = preset, cropAspect = aspect) }
+    }
+
+    /** Live drag of the crop frame (pair with beginGesture / endGesture). */
+    fun setCrop(rect: CropRect) = live { it.copy(crop = rect) }
 
     // ------------------------------------------------------------------ base image / layers transform
 

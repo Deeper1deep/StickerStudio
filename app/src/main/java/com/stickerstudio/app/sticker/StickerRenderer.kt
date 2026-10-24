@@ -69,7 +69,24 @@ object StickerRenderer {
 
     // ------------------------------------------------------------------ base image
 
-    private fun renderBase(p: StickerProject, src: Bitmap, size: Int, k: Float): Bitmap {
+    private fun renderBase(p: StickerProject, full: Bitmap, size: Int, k: Float): Bitmap {
+        // Crop first: everything after this (fit, rotate, erase...) works on the cropped picture,
+        // so the result keeps the crop's own aspect ratio and is centred on the 512x512 canvas.
+        val cropped = !p.crop.isFull
+        val src = if (cropped) {
+            val px = CropMath.pixels(p.crop, full.width, full.height)
+            Bitmap.createBitmap(full, px[0], px[1], px[2], px[3])
+        } else {
+            full
+        }
+        try {
+            return renderBaseCropped(p, src, size, k)
+        } finally {
+            if (cropped && src !== full) src.recycle()
+        }
+    }
+
+    private fun renderBaseCropped(p: StickerProject, src: Bitmap, size: Int, k: Float): Bitmap {
         val layer = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(layer)
 

@@ -1,53 +1,83 @@
 package com.stickerstudio.app.ui.theme
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 
+// Palette: violet primary, mint secondary, soft lavender surfaces (light) / deep ink (dark).
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF5B3FE0),
+    primary = Color(0xFF6D4AFF),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE6DEFF),
+    primaryContainer = Color(0xFFE9E3FF),
     onPrimaryContainer = Color(0xFF1B0063),
-    secondary = Color(0xFF00897B),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFB2F0E8),
-    onSecondaryContainer = Color(0xFF00201C),
-    tertiary = Color(0xFFD81B60),
-    background = Color(0xFFFBF8FF),
-    onBackground = Color(0xFF1C1B20),
-    surface = Color(0xFFFBF8FF),
-    onSurface = Color(0xFF1C1B20),
-    surfaceVariant = Color(0xFFE8E0F0),
-    onSurfaceVariant = Color(0xFF49454F),
+    secondary = Color(0xFF19B98A),
+    onSecondary = Color(0xFF04281F),
+    secondaryContainer = Color(0xFFC9F5E6),
+    onSecondaryContainer = Color(0xFF0B6B52),
+    tertiary = Color(0xFFFFC53D),
+    background = Color(0xFFF5F3FC),
+    onBackground = Color(0xFF17151F),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF17151F),
+    surfaceVariant = Color(0xFFEEEAFB),
+    onSurfaceVariant = Color(0xFF5E5A70),
+    outline = Color(0xFFB9B6CC),
+    outlineVariant = Color(0xFFE4E0F2),
     error = Color(0xFFBA1A1A),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFC9BEFF),
-    onPrimary = Color(0xFF2B0A9E),
-    primaryContainer = Color(0xFF4325C2),
-    onPrimaryContainer = Color(0xFFE6DEFF),
-    secondary = Color(0xFF6FD9CB),
+    primary = Color(0xFF7B5CFF),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF3A2A9E),
+    onPrimaryContainer = Color(0xFFE9E3FF),
+    secondary = Color(0xFF19D3A2),
     onSecondary = Color(0xFF00382F),
     secondaryContainer = Color(0xFF005046),
-    onSecondaryContainer = Color(0xFFB2F0E8),
-    tertiary = Color(0xFFFFB0C8),
-    background = Color(0xFF131218),
-    onBackground = Color(0xFFE5E1E9),
-    surface = Color(0xFF131218),
-    onSurface = Color(0xFFE5E1E9),
-    surfaceVariant = Color(0xFF49454F),
-    onSurfaceVariant = Color(0xFFCAC4D0),
+    onSecondaryContainer = Color(0xFFC9F5E6),
+    tertiary = Color(0xFFFFC53D),
+    background = Color(0xFF0E0D14),
+    onBackground = Color(0xFFF1EFF8),
+    surface = Color(0xFF17151F),
+    onSurface = Color(0xFFF1EFF8),
+    surfaceVariant = Color(0xFF262336),
+    onSurfaceVariant = Color(0xFFB9B6CC),
+    outline = Color(0xFF4A4660),
+    outlineVariant = Color(0xFF2E2B42),
     error = Color(0xFFFFB4AB),
+)
+
+private val AppShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp),
+)
+
+private val base = Typography()
+private val AppTypography = Typography(
+    headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+    headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+    titleLarge = base.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+    titleMedium = base.titleMedium.copy(fontWeight = FontWeight.Bold),
+    titleSmall = base.titleSmall.copy(fontWeight = FontWeight.Bold),
+    labelLarge = base.labelLarge.copy(fontWeight = FontWeight.Bold),
 )
 
 @Composable
 fun StickerStudioTheme(darkTheme: Boolean, content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
+        shapes = AppShapes,
+        typography = AppTypography,
         content = content,
     )
 }

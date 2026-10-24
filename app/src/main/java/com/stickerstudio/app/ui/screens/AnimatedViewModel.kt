@@ -13,13 +13,17 @@ import com.stickerstudio.app.sticker.AnimatedSettings
 import com.stickerstudio.app.sticker.BitmapLoader
 import com.stickerstudio.app.sticker.ConvertError
 import com.stickerstudio.app.sticker.ConvertOutcome
+import com.stickerstudio.app.sticker.CropRect
 import com.stickerstudio.app.sticker.ProjectJson
 import com.stickerstudio.app.sticker.StickerRenderer
 import com.stickerstudio.app.ui.StickerImport
+import com.stickerstudio.app.ui.components.CropPreset
 import java.io.File
+import kotlin.math.max
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,19 +35,31 @@ data class AnimatedUi(
     val sourceName: String? = null,
     val isVideo: Boolean = false,
     val durationMs: Long = 0,
+    val sourceW: Int = 0,
+    val sourceH: Int = 0,
     val settings: AnimatedSettings = AnimatedSettings(),
-    val preview: Bitmap? = null,
+    /** Frames of the live (looping) preview, already cropped / fitted / captioned. */
+    val frames: List<Bitmap> = emptyList(),
+    val frameMs: Long = 100,
+    /** Un-cropped frame shown under the crop frame while cropping. */
+    val cropFrame: Bitmap? = null,
+    val cropMode: Boolean = false,
+    val cropPreset: CropPreset = CropPreset.ORIGINAL,
+    val cropAspect: Float? = null,
     val converting: Boolean = false,
     val progress: Float = 0f,
     val resultBytes: ByteArray? = null,
-    val resultFps: Int = 0,
     val message: Int? = null,
-    val messageArg: Int = 0,
     val saved: Boolean = false,
     val loading: Boolean = false,
 )
 
-class AnimatedViewModel(app: Application, private val packId: String) : AndroidViewModel(app) {
+class AnimatedViewModel(
+    app: Application,
+    private val packId: String,
+    initialSource: String,
+    initialIsVideo: Boolean,
+) : AndroidViewModel(app) {
 
     private val repo = app.container.repository
     private val _ui = MutableStateFlow(AnimatedUi())
@@ -53,6 +69,11 @@ class AnimatedViewModel(app: Application, private val packId: String) : AndroidV
 
     private fun file(name: String): File = repo.paths.source(name)
 
+    init {
+        if (initialSource.isNotEmpty()) viewModelScope.launch { load(initialSource, initialIsVideo) }
+    }
+
+    /** Copies a picked GIF / video into app storage and opens it. */
     fun pick(uri: Uri) {
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, message = null) }
@@ -74,28 +95,34 @@ class AnimatedViewModel(app: Application, private val packId: String) : AndroidV
                 _ui.update { it.copy(loading = false, message = R.string.err_load_failed) }
                 return@launch
             }
-            val duration = withContext(Dispatchers.IO) {
-                try {
-                    AnimatedConverter.open(file(name), isVideo).use { it.durationMs }
-                } catch (e: Exception) {
-                    -1L
-                }
-            }
-            if (duration < 0) {
-                file(name).delete()
-                _ui.update { it.copy(loading = false, message = R.string.err_load_failed) }
-                return@launch
-            }
-            val limit = minOf(duration.coerceAtLeast(500L), 10_000L)
-            _ui.update {
-                it.copy(
-                    loading = false, sourceName = name, isVideo = isVideo, durationMs = duration,
-                    settings = AnimatedSettings(startMs = 0, durationMs = minOf(3000L, limit)),
-                    resultBytes = null,
-                )
-            }
-            refreshPreview()
+            load(name, isVideo)
         }
+    }
+
+    private suspend fun load(name: String, isVideo: Boolean) {
+        _ui.update { it.copy(loading = true, message = null) }
+        val info = withContext(Dispatchers.IO) {
+            try {
+                AnimatedConverter.open(file(name), isVideo).use { Triple(it.durationMs, it.width, it.height) }
+            } catch (e: Exception) {
+                null
+            }
+        }
+        if (info == null) {
+            file(name).delete()
+            _ui.update { it.copy(loading = false, message = R.string.err_load_failed) }
+            return
+        }
+        val limit = minOf(info.first.coerceAtLeast(500L), 10_000L)
+        _ui.update {
+            it.copy(
+                loading = false, sourceName = name, isVideo = isVideo, durationMs = info.first,
+                sourceW = info.second, sourceH = info.third,
+                settings = AnimatedSettings(startMs = 0, durationMs = minOf(3000L, limit)),
+                resultBytes = null,
+            )
+        }
+        refreshPreview()
     }
 
     fun change(block: (AnimatedSettings) -> AnimatedSettings) {
@@ -103,18 +130,38 @@ class AnimatedViewModel(app: Application, private val packId: String) : AndroidV
         refreshPreview()
     }
 
-    private fun refreshPreview() {
+    // ------------------------------------------------------------------ crop
+
+    fun setCropMode(on: Boolean) {
+        _ui.update { it.copy(cropMode = on) }
+        if (on) loadCropFrame()
+    }
+
+    fun setCropPreset(preset: CropPreset, rect: CropRect, aspect: Float?) {
+        _ui.update { it.copy(cropPreset = preset, cropAspect = aspect, settings = it.settings.copy(crop = rect), resultBytes = null) }
+        refreshPreview()
+    }
+
+    fun setCrop(rect: CropRect) {
+        _ui.update { it.copy(settings = it.settings.copy(crop = rect), resultBytes = null) }
+        refreshPreview()
+    }
+
+    private fun loadCropFrame() {
         val s = _ui.value
         val name = s.sourceName ?: return
-        previewJob?.cancel()
-        previewJob = viewModelScope.launch {
+        viewModelScope.launch {
             val bmp = withContext(Dispatchers.Default) {
                 try {
                     AnimatedConverter.open(file(name), s.isVideo).use { src ->
                         val raw = src.frameAt(s.settings.startMs) ?: return@use null
-                        val out = StickerRenderer.render(AnimatedConverter.projectFor(src, s.settings), raw)
-                        raw.recycle()
-                        out
+                        val side = max(raw.width, raw.height)
+                        if (side <= 720) raw else {
+                            val k = 720f / side
+                            val scaled = Bitmap.createScaledBitmap(raw, (raw.width * k).toInt().coerceAtLeast(1), (raw.height * k).toInt().coerceAtLeast(1), true)
+                            raw.recycle()
+                            scaled
+                        }
                     }
                 } catch (e: Exception) {
                     null
@@ -122,15 +169,82 @@ class AnimatedViewModel(app: Application, private val packId: String) : AndroidV
                     null
                 }
             }
-            _ui.update { it.copy(preview = bmp) }
+            _ui.update { it.copy(cropFrame = bmp) }
         }
     }
+
+    // ------------------------------------------------------------------ live preview
+
+    /** Re-renders a short looping preview with the current crop / fit / caption settings. */
+    private fun refreshPreview() {
+        val s = _ui.value
+        val name = s.sourceName ?: return
+        previewJob?.cancel()
+        previewJob = viewModelScope.launch {
+            delay(200)   // wait until the user stops dragging a slider
+            val frameDuration = (1000f / s.settings.fps).toLong().coerceAtLeast(40L)
+            val total = minOf(s.settings.durationMs, max(s.durationMs - s.settings.startMs, frameDuration * 2))
+            val step = max(frameDuration, total / MAX_PREVIEW_FRAMES)
+            val count = (total / step).toInt().coerceIn(2, MAX_PREVIEW_FRAMES)
+            val out = ArrayList<Bitmap>()
+            try {
+                withContext(Dispatchers.Default) {
+                    AnimatedConverter.open(file(name), s.isVideo).use { src ->
+                        val project = AnimatedConverter.projectFor(src, s.settings)
+                        for (i in 0 until count) {
+                            val raw = src.frameAt(s.settings.startMs + i * step) ?: continue
+                            out += StickerRenderer.render(project, raw, PREVIEW_SIZE)
+                            raw.recycle()
+                            // Start playing after the first few frames, then keep extending the loop.
+                            if (i == 3 || i == count - 1) {
+                                val snapshot = out.toList()
+                                _ui.update { it.copy(frames = snapshot, frameMs = step) }
+                            }
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.update { it.copy(message = R.string.err_load_failed) }
+            } catch (e: OutOfMemoryError) {
+                _ui.update { it.copy(message = R.string.err_memory) }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ static alternative
+
+    /** Saves the frame at the start point as a picture and hands it to the static editor. */
+    fun makeStatic(onReady: (String) -> Unit) {
+        val s = _ui.value
+        val name = s.sourceName ?: return
+        viewModelScope.launch {
+            val picture = withContext(Dispatchers.Default) {
+                try {
+                    AnimatedConverter.open(file(name), s.isVideo).use { src ->
+                        val raw = src.frameAt(s.settings.startMs) ?: return@use null
+                        val saved = BitmapLoader.savePng(repo.paths.sources, raw)
+                        raw.recycle()
+                        saved
+                    }
+                } catch (e: Exception) {
+                    null
+                } catch (e: OutOfMemoryError) {
+                    null
+                }
+            }
+            if (picture == null) _ui.update { it.copy(message = R.string.err_load_failed) } else onReady(picture)
+        }
+    }
+
+    // ------------------------------------------------------------------ convert / save
 
     fun convert() {
         val s = _ui.value
         val name = s.sourceName ?: return
         if (job?.isActive == true) return
-        _ui.update { it.copy(converting = true, progress = 0f, resultBytes = null, message = null) }
+        _ui.update { it.copy(converting = true, progress = 0f, resultBytes = null, message = null, cropMode = false) }
         job = viewModelScope.launch {
             try {
                 val out = AnimatedConverter.convert(file(name), s.isVideo, s.settings) { p ->
@@ -138,7 +252,7 @@ class AnimatedViewModel(app: Application, private val packId: String) : AndroidV
                 }
                 when (out) {
                     is ConvertOutcome.Success ->
-                        _ui.update { it.copy(converting = false, resultBytes = out.bytes, resultFps = out.fps, message = R.string.anim_done, messageArg = out.bytes.size / 1024) }
+                        _ui.update { it.copy(converting = false, resultBytes = out.bytes, message = R.string.anim_done) }
                     is ConvertOutcome.Failure -> _ui.update {
                         it.copy(
                             converting = false,
@@ -177,6 +291,12 @@ class AnimatedViewModel(app: Application, private val packId: String) : AndroidV
 
     override fun onCleared() {
         job?.cancel()
+        previewJob?.cancel()
         super.onCleared()
+    }
+
+    companion object {
+        private const val MAX_PREVIEW_FRAMES = 30
+        private const val PREVIEW_SIZE = 320
     }
 }
