@@ -6,12 +6,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.CollectionsBookmark
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.CollectionsBookmark
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -90,20 +96,27 @@ fun AppRoot() {
     Scaffold(
         bottomBar = {
             if (showBar) {
-                NavigationBar {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     tabs.forEach { tab ->
                         NavigationBarItem(
                             selected = current == tab.route,
                             onClick = { goTab(nav, tab.route) },
                             icon = {
-                                when (tab.route) {
-                                    Routes.HOME -> Icon(Icons.Filled.Home, null)
-                                    Routes.CREATE -> Icon(Icons.Filled.AddCircle, null)
-                                    Routes.PACKS -> Icon(Icons.Filled.GridView, null)
-                                    else -> Icon(Icons.Filled.Settings, null)
+                                val sel = current == tab.route
+                                val v = when (tab.route) {
+                                    Routes.HOME -> if (sel) Icons.Filled.Home else Icons.Outlined.Home
+                                    Routes.CREATE -> if (sel) Icons.Filled.AddCircle else Icons.Outlined.AddCircleOutline
+                                    Routes.PACKS -> if (sel) Icons.Filled.CollectionsBookmark else Icons.Outlined.CollectionsBookmark
+                                    else -> if (sel) Icons.Filled.Settings else Icons.Outlined.Settings
                                 }
+                                Icon(v, null)
                             },
-                            label = { Text(stringResource(tab.label)) },
+                            label = { Text(stringResource(tab.label), style = MaterialTheme.typography.labelMedium) },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                         )
                     }
                 }
