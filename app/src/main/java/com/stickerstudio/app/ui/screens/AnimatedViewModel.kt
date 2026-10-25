@@ -195,8 +195,9 @@ class AnimatedViewModel(
                             val raw = src.frameAt(s.settings.startMs + i * step) ?: continue
                             out += StickerRenderer.render(project, raw, PREVIEW_SIZE)
                             raw.recycle()
-                            // Start playing after the first few frames, then keep extending the loop.
-                            if (i == 3 || i == count - 1) {
+                            // Show the first picture right away, then the whole loop once it is ready
+                            // (a half-built loop would play as a short, jerky cycle).
+                            if (i == 0 || i == count - 1) {
                                 val snapshot = out.toList()
                                 _ui.update { it.copy(frames = snapshot, frameMs = step) }
                             }
@@ -296,7 +297,7 @@ class AnimatedViewModel(
     }
 
     companion object {
-        private const val MAX_PREVIEW_FRAMES = 30
-        private const val PREVIEW_SIZE = 320
+        private const val MAX_PREVIEW_FRAMES = 90
+        private const val PREVIEW_SIZE = 256
     }
 }

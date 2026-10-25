@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.0.0 — unreleased
+- Smoother animated preview: up to 90 frames (was 30), timed from the display clock, and no half-built loop while frames are still being prepared.
 - "Add to WhatsApp" is replaced by "Added to WhatsApp" while the pack is installed there, and comes back after it is removed (checked each time the app returns to the front).
 - Credits card in Settings (tap opens the author's WhatsApp chat).
 - WebM decoding no longer waits on stalled decoders (prefers the software VP9 decoder, feeds ahead, fails fast). A one-frame GIF opens in the normal picture editor.

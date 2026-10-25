@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -214,22 +215,30 @@ fun AnimatedScreen(
     }
 }
 
-/** Plays [frames] in a loop, [frameMs] per frame. */
+/**
+ * Plays [frames] in a loop, [frameMs] per frame. The frame is chosen from the display clock
+ * (not from a chain of delays), so timing stays even and does not drift when a frame is slow.
+ */
 @Composable
 private fun LoopingPreview(frames: List<android.graphics.Bitmap>, frameMs: Long) {
+    val images = remember(frames) { frames.map { it.asImageBitmap() } }
     var index by remember(frames) { mutableIntStateOf(0) }
     LaunchedEffect(frames, frameMs) {
         if (frames.size > 1) {
+            val step = frameMs.coerceAtLeast(1L)
+            val start = withFrameNanos { it }
             while (true) {
-                delay(frameMs)
-                index = (index + 1) % frames.size
+                withFrameNanos { now ->
+                    val i = (((now - start) / 1_000_000L) / step % frames.size).toInt()
+                    if (i != index) index = i
+                }
             }
         }
     }
-    val frame = frames.getOrNull(index % maxOf(frames.size, 1))
+    val frame = images.getOrNull(index % maxOf(images.size, 1))
     if (frame != null) {
         Image(
-            bitmap = frame.asImageBitmap(),
+            bitmap = frame,
             contentDescription = stringResource(R.string.preview),
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
