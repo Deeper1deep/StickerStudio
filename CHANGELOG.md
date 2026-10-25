@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased - import / export .wastickers
+
+- New "Import" button on the home screen: creates a pack from a `.wastickers` or `.zip` file
+  (title/author, emojis and order are read when present; valid WhatsApp WebP files are kept as they are,
+  other pictures and non-512 static WebP are fitted into proper stickers; max 30, the rest is reported).
+- Packs are now saved as `.wastickers` (ZIP with title.txt, author.txt, tray, numbered .webp, pack.json).
+- `PackArchive` (pure Kotlin) + `PackArchiveTest`.
+
 ## Unreleased - fast GIF conversion
 
 - GIFs are now read with an own sequential decoder (`GifDecoder`) instead of `android.graphics.Movie`,

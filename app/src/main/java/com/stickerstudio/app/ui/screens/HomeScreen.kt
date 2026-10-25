@@ -1,5 +1,7 @@
 package com.stickerstudio.app.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
@@ -50,7 +53,11 @@ import com.stickerstudio.app.ui.PackActionsController
 import com.stickerstudio.app.ui.PackActionsDialogs
 import com.stickerstudio.app.ui.WhatsAppActionButton
 import com.stickerstudio.app.ui.components.AppCard
+import com.stickerstudio.app.ui.PackFileImport
+import com.stickerstudio.app.ui.PackImportResult
+import com.stickerstudio.app.ui.components.BusyDialog
 import com.stickerstudio.app.ui.components.ConfirmDialog
+import com.stickerstudio.app.ui.components.MessageDialog
 import com.stickerstudio.app.ui.components.EmptyState
 import com.stickerstudio.app.ui.components.PackInfoDialog
 import com.stickerstudio.app.ui.components.SectionTitle
@@ -87,6 +94,18 @@ fun HomeScreen(
     var creating by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<PackEntity?>(null) }
     var deleting by remember { mutableStateOf<PackEntity?>(null) }
+    var importing by remember { mutableStateOf(false) }
+    var importResult by remember { mutableStateOf<PackImportResult?>(null) }
+    // .wastickers has no registered MIME type, so the picker must accept any file.
+    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                importing = true
+                importResult = PackFileImport.import(context, uri)
+                importing = false
+            }
+        }
+    }
 
     LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
         item(key = "header") {
@@ -145,6 +164,10 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(stringResource(R.string.home_my_packs), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                TextButton(onClick = { importPicker.launch(arrayOf("*/*")) }) {
+                    Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
+                    Text(stringResource(R.string.import_pack), Modifier.padding(start = 6.dp))
+                }
                 FilledTonalButton(onClick = { creating = true }) {
                     Icon(Icons.Filled.Add, null, Modifier.size(18.dp))
                     Text(stringResource(R.string.new_pack), Modifier.padding(start = 6.dp))
@@ -206,6 +229,22 @@ fun HomeScreen(
             stringResource(R.string.delete),
             onConfirm = { deleting = null; scope.launch { c.repository.deletePack(p.id) } },
             onDismiss = { deleting = null },
+        )
+    }
+    if (importing) BusyDialog()
+    importResult?.let { r ->
+        val message = if (r.error != null) {
+            stringResource(r.error)
+        } else {
+            stringResource(R.string.import_pack_done, r.added) +
+                if (r.skipped > 0) " " + stringResource(R.string.import_pack_skipped, r.skipped) else ""
+        }
+        MessageDialog(
+            stringResource(R.string.import_pack_title), message,
+            onDismiss = {
+                importResult = null
+                r.packId?.let(onOpenPack)
+            },
         )
     }
     PackActionsDialogs(actions)

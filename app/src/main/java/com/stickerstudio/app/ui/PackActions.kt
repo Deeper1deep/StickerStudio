@@ -107,7 +107,7 @@ class PackActionsController(
             val pack = repo.findPack(packId) ?: return@launch
             zipPack = pack
             val safe = pack.name.replace(Regex("[^\\p{L}\\p{N}_-]+"), "_").trim('_').ifEmpty { "stickers" }
-            launchZip("$safe.zip")
+            launchZip("$safe.wastickers")
         }
     }
 
@@ -136,7 +136,7 @@ fun rememberPackActions(): PackActionsController {
     val enableLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         controller.onEnableResult(it.resultCode, it.data)
     }
-    val zipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) {
+    val zipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-wastickers")) {
         controller.onZipUri(it)
     }
     controller.launchEnable = { enableLauncher.launch(it) }

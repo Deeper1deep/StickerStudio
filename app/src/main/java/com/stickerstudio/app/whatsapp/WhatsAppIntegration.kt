@@ -90,12 +90,21 @@ object WhatsAppIntegration {
     }
 
     /**
-     * Writes a ZIP with the sticker files, tray icon and a pack.json description. This is a
-     * backup / sharing format only: it does NOT add the pack to WhatsApp.
+     * Writes a `.wastickers` file (a ZIP): `title.txt`, `author.txt`, the tray icon, numbered `.webp`
+     * stickers and a `pack.json` with the emojis. Sticker Maker style apps and this app can import
+     * it. It does NOT add the pack to WhatsApp by itself.
      */
     suspend fun writeZip(repo: PackRepository, pack: PackEntity, out: OutputStream) = withContext(Dispatchers.IO) {
         val stickers = repo.stickersOf(pack.id)
         ZipOutputStream(out.buffered()).use { zip ->
+            fun put(name: String, bytes: ByteArray) {
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+            put("title.txt", pack.name.toByteArray(Charsets.UTF_8))
+            put("author.txt", pack.publisher.toByteArray(Charsets.UTF_8))
+
             val json = StringBuilder()
             json.append("{\n  \"identifier\": ").append(quote(pack.id))
                 .append(",\n  \"name\": ").append(quote(pack.name))
@@ -103,23 +112,15 @@ object WhatsAppIntegration {
                 .append(",\n  \"animated\": ").append(pack.animated)
                 .append(",\n  \"stickers\": [")
             stickers.forEachIndexed { i, s ->
-                val entryName = "stickers/%02d.webp".format(i + 1)
-                zip.putNextEntry(ZipEntry(entryName))
-                zip.write(ExportFiles.resolve(repo.paths.packDir(s.packId), s, pack.animated).readBytes())
-                zip.closeEntry()
+                val entryName = "${i + 1}.webp"
+                put(entryName, ExportFiles.resolve(repo.paths.packDir(s.packId), s, pack.animated).readBytes())
                 if (i > 0) json.append(',')
                 json.append("\n    {\"file\": ").append(quote(entryName)).append(", \"emojis\": ").append(quote(s.emojis)).append('}')
             }
             json.append("\n  ]\n}\n")
 
-            repo.trayFile(pack)?.takeIf { it.isFile }?.let { tray ->
-                zip.putNextEntry(ZipEntry("tray." + tray.extension))
-                zip.write(tray.readBytes())
-                zip.closeEntry()
-            }
-            zip.putNextEntry(ZipEntry("pack.json"))
-            zip.write(json.toString().toByteArray(Charsets.UTF_8))
-            zip.closeEntry()
+            repo.trayFile(pack)?.takeIf { it.isFile }?.let { tray -> put("tray." + tray.extension, tray.readBytes()) }
+            put("pack.json", json.toString().toByteArray(Charsets.UTF_8))
         }
     }
 

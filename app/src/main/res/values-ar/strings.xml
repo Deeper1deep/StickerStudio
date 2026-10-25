@@ -85,7 +85,7 @@
     <string name="err_pack_missing">الحزمة لم تعد موجودة.</string>
     <string name="err_save_failed">فشل الحفظ. تأكد من وجود مساحة وحاول مرة أخرى.</string>
     <string name="err_too_big">تعذر تصغير الملصق تحت حد الحجم المسموح في واتساب.</string>
-    <string name="export_zip">نسخة ZIP</string>
+    <string name="export_zip">حفظ كملف wastickers</string>
     <string name="fill">ملء</string>
     <string name="fill_color">لون التعبئة</string>
     <string name="fit">احتواء</string>
@@ -112,6 +112,13 @@
     <string name="home_my_packs">حزمي</string>
     <string name="import_done">تمت إضافة %1$d ملصق.</string>
     <string name="import_failed">تعذرت قراءة %1$d صورة.</string>
+    <string name="import_pack">استيراد</string>
+    <string name="import_pack_busy">جارٍ استيراد الحزمة…</string>
+    <string name="import_pack_default_name">حزمة مستوردة</string>
+    <string name="import_pack_done">تم استيراد %1$d ملصق.</string>
+    <string name="import_pack_invalid">لا توجد ملصقات صالحة في هذا الملف. اختر حزمة بصيغة wastickers أو zip.</string>
+    <string name="import_pack_skipped">تم تخطي %1$d (غير صالح لواتساب).</string>
+    <string name="import_pack_title">استيراد حزمة</string>
     <string name="import_progress">جارٍ معالجة %1$d من %2$d…</string>
     <string name="issue_dimensions">الملصق %1$d: المقاس يجب أن يكون 512x512 بالضبط.</string>
     <string name="issue_duration">الملصق %1$d: الحركة أطول من 10 ثوانٍ.</string>
@@ -250,6 +257,6 @@
     <string name="wa_rejected">رفض واتساب الحزمة:</string>
     <string name="whatsapp">واتساب</string>
     <string name="whatsapp_business">واتساب للأعمال</string>
-    <string name="zip_done">تم حفظ ملف النسخة الاحتياطية.</string>
-    <string name="zip_failed">تعذر حفظ ملف النسخة الاحتياطية.</string>
+    <string name="zip_done">تم حفظ ملف الحزمة (wastickers).</string>
+    <string name="zip_failed">تعذر حفظ ملف الحزمة.</string>
 </resources>

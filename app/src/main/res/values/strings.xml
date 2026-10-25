@@ -85,7 +85,7 @@
     <string name="err_pack_missing">The pack no longer exists.</string>
     <string name="err_save_failed">Saving failed. Check free storage and try again.</string>
     <string name="err_too_big">Could not shrink the sticker under the WhatsApp size limit.</string>
-    <string name="export_zip">Backup ZIP</string>
+    <string name="export_zip">Save as .wastickers</string>
     <string name="fill">Fill</string>
     <string name="fill_color">Fill colour</string>
     <string name="fit">Fit</string>
@@ -112,6 +112,13 @@
     <string name="home_my_packs">My packs</string>
     <string name="import_done">%1$d stickers added.</string>
     <string name="import_failed">%1$d pictures could not be read.</string>
+    <string name="import_pack">Import</string>
+    <string name="import_pack_busy">Importing the pack…</string>
+    <string name="import_pack_default_name">Imported pack</string>
+    <string name="import_pack_done">%1$d stickers imported.</string>
+    <string name="import_pack_invalid">No usable stickers in this file. Pick a .wastickers or .zip pack.</string>
+    <string name="import_pack_skipped">%1$d skipped (not valid for WhatsApp).</string>
+    <string name="import_pack_title">Import a pack</string>
     <string name="import_progress">Converting %1$d of %2$d…</string>
     <string name="issue_dimensions">Sticker %1$d: the size must be exactly 512x512.</string>
     <string name="issue_duration">Sticker %1$d: the animation is longer than 10 seconds.</string>
@@ -250,6 +257,6 @@
     <string name="wa_rejected">WhatsApp rejected the pack:</string>
     <string name="whatsapp">WhatsApp</string>
     <string name="whatsapp_business">WhatsApp Business</string>
-    <string name="zip_done">Backup file saved.</string>
-    <string name="zip_failed">Could not save the backup file.</string>
+    <string name="zip_done">Pack file saved (.wastickers).</string>
+    <string name="zip_failed">Could not save the pack file.</string>
 </resources>
