@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.0.0 — unreleased
-- WebM / video support: file type is detected from the file contents (not only the MIME type), then converted like a GIF to an animated WebP sticker. Transparency inside WebM stickers is not preserved (Android decodes them without alpha).
+- WebM / video support (VP9 WebM is demuxed and decoded frame by frame, so files without a seek index animate, and a separate alpha stream keeps transparency): file type is detected from the file contents (not only the MIME type), then converted like a GIF to an animated WebP sticker. Transparency inside WebM stickers is not preserved (Android decodes them without alpha).
 - Telegram-style update popup at launch (version, size, changelog: Update now / Later / Skip). Every CI build on main now publishes a test release with `update.json`, so the app sees it.
 - Cairo font bundled (SIL Open Font License) for Arabic and Latin text.
 - Redesign of all screens (violet + white) with new filled/outlined bottom-navigation icons (launcher icon unchanged), Home, Create, Packs, Pack detail (WhatsApp readiness banner), Settings, Updates, bottom navigation.

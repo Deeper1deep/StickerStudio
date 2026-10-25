@@ -109,8 +109,24 @@ object AnimatedConverter {
 
     private class Attempt(val quality: Int, val fps: Int)
 
-    fun open(file: File, isVideo: Boolean): FrameSource =
-        if (isVideo) VideoFrameSource(file) else GifFrameSource(file)
+    fun open(file: File, isVideo: Boolean): FrameSource {
+        if (!isVideo) return GifFrameSource(file)
+        // VP9 WebM (e.g. Telegram stickers): decode in order, which also keeps transparency.
+        if (WebmFrameSource.looksLikeWebm(file)) {
+            try {
+                val src = WebmFrameSource(file)
+                val first = try { src.frameAt(0L) } catch (e: Exception) { null }
+                if (first != null) {
+                    first.recycle()
+                    return src
+                }
+                src.close()
+            } catch (e: Exception) {
+                // not VP9 / no decoder: use the generic reader below
+            }
+        }
+        return VideoFrameSource(file)
+    }
 
     /** Project used for every frame: fit or cover, plus an optional caption. */
     fun projectFor(src: FrameSource, settings: AnimatedSettings): StickerProject {
