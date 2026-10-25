@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 private const val CONTACT_URL = "https://wa.me/qr/BTFMWNAXQXM3L1"
 
 @Composable
-fun SettingsScreen(onOpenUpdates: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onOpenUpdates: () -> Unit) {
     val context = LocalContext.current
     val settings = context.container.settings
     val scope = rememberCoroutineScope()
@@ -60,7 +60,7 @@ fun SettingsScreen(onOpenUpdates: () -> Unit) {
     val currentLang = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-')
 
     Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        ScreenHeader(stringResource(R.string.nav_settings))
+        ScreenHeader(stringResource(R.string.nav_settings), onBack = onBack)
 
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Group(Icons.Filled.DarkMode, R.string.settings_theme) {

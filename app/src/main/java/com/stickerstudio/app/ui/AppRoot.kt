@@ -44,11 +44,9 @@ import com.stickerstudio.app.R
 import com.stickerstudio.app.container
 import com.stickerstudio.app.sticker.BitmapLoader
 import com.stickerstudio.app.ui.screens.AnimatedScreen
-import com.stickerstudio.app.ui.screens.CreateScreen
 import com.stickerstudio.app.ui.screens.EditorScreen
 import com.stickerstudio.app.ui.screens.HomeScreen
 import com.stickerstudio.app.ui.screens.PackDetailScreen
-import com.stickerstudio.app.ui.screens.PacksScreen
 import com.stickerstudio.app.ui.screens.SettingsScreen
 import com.stickerstudio.app.ui.screens.UpdatesScreen
 import kotlinx.coroutines.Dispatchers
@@ -56,8 +54,6 @@ import kotlinx.coroutines.withContext
 
 object Routes {
     const val HOME = "home"
-    const val CREATE = "create"
-    const val PACKS = "packs"
     const val SETTINGS = "settings"
     const val UPDATES = "updates"
     const val PACK = "pack/{packId}"
@@ -92,13 +88,7 @@ fun AppRoot() {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
-    val tabs = listOf(
-        Tab(Routes.HOME, R.string.nav_home),
-        Tab(Routes.CREATE, R.string.nav_create),
-        Tab(Routes.PACKS, R.string.nav_packs),
-        Tab(Routes.SETTINGS, R.string.nav_settings),
-    )
-    val showBar = tabs.any { it.route == current }
+    val showBar = current == Routes.HOME
 
     // Telegram-style "new version" popup: once per launch, only on the main tabs.
     val appContext = androidx.compose.ui.platform.LocalContext.current
@@ -135,56 +125,20 @@ fun AppRoot() {
         )
     }
 
-    Scaffold(
-        bottomBar = {
-            if (showBar) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                    tabs.forEach { tab ->
-                        NavigationBarItem(
-                            selected = current == tab.route,
-                            onClick = { goTab(nav, tab.route) },
-                            icon = {
-                                val sel = current == tab.route
-                                val v = when (tab.route) {
-                                    Routes.HOME -> if (sel) Icons.Filled.Home else Icons.Outlined.Home
-                                    Routes.CREATE -> if (sel) Icons.Filled.AddCircle else Icons.Outlined.AddCircleOutline
-                                    Routes.PACKS -> if (sel) Icons.Filled.CollectionsBookmark else Icons.Outlined.CollectionsBookmark
-                                    else -> if (sel) Icons.Filled.Settings else Icons.Outlined.Settings
-                                }
-                                Icon(v, null)
-                            },
-                            label = { Text(stringResource(tab.label), style = MaterialTheme.typography.labelMedium) },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                        )
-                    }
-                }
-            }
-        },
-    ) { padding ->
+    Scaffold { padding ->
         NavHost(nav, startDestination = Routes.HOME, modifier = Modifier.padding(padding)) {
             composable(Routes.HOME) {
                 HomeScreen(
-                    onCreate = { goTab(nav, Routes.CREATE) },
-                    onOpenPack = { nav.navigate(Routes.pack(it)) },
-                    onOpenDraft = { nav.navigate(Routes.editor(draft = it)) },
-                    onOpenPacks = { goTab(nav, Routes.PACKS) },
-                    onOpenUpdates = { nav.navigate(Routes.UPDATES) },
-                )
-            }
-            composable(Routes.CREATE) {
-                CreateScreen(
                     onEditor = { source, pack -> nav.navigate(Routes.editor(source = source, pack = pack)) },
                     onBlankEditor = { pack -> nav.navigate(Routes.editor(pack = pack)) },
                     onAnimated = { pack, source, video -> nav.navigate(Routes.animated(pack, source, video)) },
                     onOpenPack = { nav.navigate(Routes.pack(it)) },
+                    onOpenDraft = { nav.navigate(Routes.editor(draft = it)) },
+                    onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                    onOpenUpdates = { nav.navigate(Routes.UPDATES) },
                 )
             }
-            composable(Routes.PACKS) { PacksScreen(onOpenPack = { nav.navigate(Routes.pack(it)) }) }
-            composable(Routes.SETTINGS) { SettingsScreen(onOpenUpdates = { nav.navigate(Routes.UPDATES) }) }
+            composable(Routes.SETTINGS) { SettingsScreen(onBack = { nav.popBackStack() }, onOpenUpdates = { nav.navigate(Routes.UPDATES) }) }
             composable(Routes.UPDATES) { UpdatesScreen(onBack = { nav.popBackStack() }) }
             composable(
                 Routes.PACK,
@@ -237,13 +191,5 @@ fun AppRoot() {
                 )
             }
         }
-    }
-}
-
-private fun goTab(nav: NavHostController, route: String) {
-    nav.navigate(route) {
-        popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-        launchSingleTop = true
-        restoreState = true
     }
 }

@@ -265,7 +265,7 @@ fun PackDetailScreen(
     previewing?.let { s ->
         AlertDialog(
             onDismissRequest = { previewing = null },
-            text = { StickerThumb(repo.stickerFile(s), Modifier.fillMaxWidth().aspectRatio(1f)) },
+            text = { StickerThumb(repo.stickerFile(s), Modifier.fillMaxWidth().aspectRatio(1f), animate = true) },
             confirmButton = { TextButton(onClick = { previewing = null }) { Text(stringResource(R.string.ok)) } },
         )
     }

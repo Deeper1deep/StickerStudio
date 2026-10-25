@@ -78,9 +78,13 @@ fun Modifier.checkerboard(
     }
 }
 
-/** A sticker file (static or animated WebP) shown on a checkerboard. */
+/**
+ * A sticker file shown on a checkerboard. Grid and list thumbnails are small and static (the first
+ * frame of an animated sticker): playing dozens of animations while scrolling made it stutter.
+ * Pass [animate] = true where a single sticker is shown big (preview).
+ */
 @Composable
-fun StickerThumb(file: File?, modifier: Modifier = Modifier, showChecker: Boolean = true) {
+fun StickerThumb(file: File?, modifier: Modifier = Modifier, showChecker: Boolean = true, animate: Boolean = false) {
     Box(
         modifier = modifier
             .clip(MaterialTheme.shapes.medium)
@@ -88,14 +92,35 @@ fun StickerThumb(file: File?, modifier: Modifier = Modifier, showChecker: Boolea
         contentAlignment = Alignment.Center,
     ) {
         if (file != null && file.isFile) {
-            AsyncImage(
-                model = file,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
+            val context = androidx.compose.ui.platform.LocalContext.current
+            if (animate) {
+                AsyncImage(
+                    model = file,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                AsyncImage(
+                    model = coil.request.ImageRequest.Builder(context).data(file).size(256).build(),
+                    imageLoader = StaticImages.loader(context),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
+}
+
+/** An image loader without the animated-image decoders: it shows the first frame only. */
+private object StaticImages {
+    @Volatile private var instance: coil.ImageLoader? = null
+
+    fun loader(context: android.content.Context): coil.ImageLoader =
+        instance ?: synchronized(this) {
+            instance ?: coil.ImageLoader.Builder(context.applicationContext).crossfade(false).build().also { instance = it }
+        }
 }
 
 val PALETTE: List<Int> = listOf(
@@ -188,8 +213,22 @@ fun AppCard(
 
 /** Big screen title with an optional subtitle and a trailing action. */
 @Composable
-fun ScreenHeader(title: String, modifier: Modifier = Modifier, subtitle: String? = null, trailing: @Composable (() -> Unit)? = null) {
-    Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+fun ScreenHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    onBack: (() -> Unit)? = null,
+    trailing: @Composable (() -> Unit)? = null,
+) {
+    Row(modifier.fillMaxWidth().padding(start = if (onBack == null) 20.dp else 8.dp, end = 12.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (onBack != null) {
+            androidx.compose.material3.IconButton(onClick = onBack) {
+                androidx.compose.material3.Icon(
+                    androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack,
+                    androidx.compose.ui.res.stringResource(com.stickerstudio.app.R.string.back),
+                )
+            }
+        }
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.headlineMedium)
             if (subtitle != null) {

@@ -144,13 +144,10 @@ fun CreateScreen(
     }
 
     Column(
-        Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+        Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column {
-            Text(stringResource(R.string.create_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-            Text(stringResource(R.string.create_subtitle), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Text(stringResource(R.string.create_title), style = MaterialTheme.typography.titleLarge)
 
         // The one big button: picture, GIF or video.
         Card(

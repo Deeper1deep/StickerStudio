@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased - one-screen home
+
+- Removed the bottom navigation bar. Home now has a small settings button on top, the create section
+  below it and the existing packs under that (rename / delete / WhatsApp action on each card).
+- Settings opens from that button and has a back arrow.
+- Pack screen: grid thumbnails are static and downsized (animation only in the big preview), which
+  removes the small stutter while scrolling.
+
 ## 1.0.0 — unreleased
 - Pack screen is now a grid of 30 slots; each empty slot has a "+" that opens the gallery (pictures, GIFs and videos). One file opens its editor; several files are added in one go (GIFs / videos are converted to animated stickers, whole clips up to WhatsApp's 10 s limit, with progress). The "+" in the top bar was removed.
 - "Update in WhatsApp" appears when a pack that is already in WhatsApp has been edited since it was last sent.
