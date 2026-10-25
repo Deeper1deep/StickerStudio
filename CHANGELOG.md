@@ -6,6 +6,9 @@
   which was extremely slow per frame (conversion took minutes, the editor preview stayed on one frame).
 - Conversion predicts the size from a few sample frames and starts at the first quality setting that
   should fit, instead of fully encoding and discarding several too-big attempts.
+- MP4 / other videos are decoded in order with MediaExtractor + MediaCodec (frames shrunk to <= 960 px,
+  rotation and colour range handled) instead of one slow `getFrameAtTime` per frame; the old reader
+  stays as an automatic fallback if the fast one fails on a device.
 - New unit test `GifDecoderTest` (frames checked against Pillow, including transparency and disposal).
 
 ## Unreleased - one-screen home

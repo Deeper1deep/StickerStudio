@@ -121,7 +121,12 @@ object AnimatedConverter {
                 // not VP9 / no decoder: use the generic reader below
             }
         }
-        return VideoFrameSource(file)
+        // Other videos (MP4 ...): fast in-order decoding, with the old reader as a safety net.
+        return try {
+            FallbackFrameSource(CodecFrameSource(file)) { VideoFrameSource(file) }
+        } catch (e: Exception) {
+            VideoFrameSource(file)
+        }
     }
 
     /** Project used for every frame: fit or cover, plus an optional caption. */
