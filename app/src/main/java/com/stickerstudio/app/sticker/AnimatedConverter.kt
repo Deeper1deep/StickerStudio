@@ -1,8 +1,6 @@
 package com.stickerstudio.app.sticker
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Movie
 import android.media.MediaMetadataRetriever
 import com.stickerstudio.app.core.WhatsAppLimits
 import java.io.Closeable
@@ -25,25 +23,23 @@ interface FrameSource : Closeable {
     fun frameAt(timeMs: Long): Bitmap?
 }
 
-/** Animated GIF through android.graphics.Movie (works on every supported API level). */
+/** Animated GIF, decoded in order by [GifDecoder] (fast for sequential reads). */
 class GifFrameSource(file: File) : FrameSource {
-    @Suppress("DEPRECATION")
-    private val movie: Movie = Movie.decodeFile(file.path) ?: throw IOException("Not a readable GIF")
+    private val decoder = GifDecoder(file.readBytes())
+    private val buffer: IntArray
 
-    override val durationMs: Long = movie.duration().toLong()
-    override val width: Int = movie.width()
-    override val height: Int = movie.height()
+    override val durationMs: Long = decoder.durationMs
+    override val width: Int = decoder.width
+    override val height: Int = decoder.height
 
     init {
-        if (durationMs <= 0L || width <= 0 || height <= 0) throw IOException("GIF is not animated")
+        if (decoder.frameCount < 2 || durationMs <= 0L || width <= 0 || height <= 0) throw IOException("GIF is not animated")
+        buffer = IntArray(width * height)
     }
 
-    @Suppress("DEPRECATION")
     override fun frameAt(timeMs: Long): Bitmap? {
-        movie.setTime((timeMs % durationMs).toInt())
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        movie.draw(Canvas(bitmap), 0f, 0f)
-        return bitmap
+        decoder.renderFrame(decoder.indexAt(timeMs), buffer)
+        return Bitmap.createBitmap(buffer, width, height, Bitmap.Config.ARGB_8888)
     }
 
     override fun close() = Unit
@@ -159,9 +155,13 @@ object AnimatedConverter {
                     Attempt(34, slow), Attempt(22, slow), Attempt(14, 8),
                 )
                 var lastSize = 0
+                // Predict each attempt's size from a few sample frames, so we do not run (and throw
+                // away) a full encode for settings that are obviously too big.
+                val start = estimateStart(src, project, settings, attempts)
                 for ((index, attempt) in attempts.withIndex()) {
+                    if (index < start) continue
                     val bytes = encodeOnce(src, project, settings, attempt) { p ->
-                        onProgress((index + p) / attempts.size)
+                        onProgress((index - start + p) / (attempts.size - start))
                     }
                     lastSize = bytes.size
                     if (bytes.size <= WhatsAppLimits.MAX_ANIMATED_BYTES) {
@@ -186,6 +186,47 @@ object AnimatedConverter {
         }
     }
 
+    private const val SAMPLES = 5
+
+    /** Frame length and count for [fps]; shared by the estimate and the real encode. */
+    private fun plan(src: FrameSource, settings: AnimatedSettings, fps: Int): Pair<Int, Int> {
+        val frameDuration = (1000f / fps).roundToInt().coerceAtLeast(WhatsAppLimits.MIN_FRAME_DURATION_MS)
+        val available = max(0L, src.durationMs - settings.startMs)
+        val totalMs = min(min(settings.durationMs, WhatsAppLimits.MAX_ANIMATED_DURATION_MS.toLong()), max(available, frameDuration * 2L))
+        return frameDuration to max(2, (totalMs / frameDuration).toInt())
+    }
+
+    /** First attempt whose predicted size fits (about 90% of the limit); the last one if none does. */
+    private suspend fun estimateStart(
+        src: FrameSource,
+        project: StickerProject,
+        settings: AnimatedSettings,
+        attempts: List<Attempt>,
+    ): Int {
+        val (frameDuration, count) = plan(src, settings, settings.fps)
+        val n = min(SAMPLES, count)
+        val rendered = ArrayList<Bitmap>(n)
+        try {
+            for (k in 0 until n) {
+                currentCoroutineContext().ensureActive()
+                val i = if (n == 1) 0 else k * (count - 1) / (n - 1)
+                val raw = src.frameAt(settings.startMs + i.toLong() * frameDuration) ?: continue
+                rendered += StickerRenderer.render(project, raw)
+                raw.recycle()
+            }
+            if (rendered.isEmpty()) return 0
+            val budget = WhatsAppLimits.MAX_ANIMATED_BYTES * 0.9
+            for ((index, attempt) in attempts.withIndex()) {
+                val perFrame = rendered.sumOf { StickerEncoder.compress(it, attempt.quality).size.toLong() } / rendered.size
+                val frames = plan(src, settings, attempt.fps).second
+                if (perFrame * frames + 1024 <= budget) return index
+            }
+            return attempts.size - 1
+        } finally {
+            rendered.forEach { it.recycle() }
+        }
+    }
+
     private suspend fun encodeOnce(
         src: FrameSource,
         project: StickerProject,
@@ -193,10 +234,7 @@ object AnimatedConverter {
         attempt: Attempt,
         onProgress: (Float) -> Unit,
     ): ByteArray {
-        val frameDuration = (1000f / attempt.fps).roundToInt().coerceAtLeast(WhatsAppLimits.MIN_FRAME_DURATION_MS)
-        val available = max(0L, src.durationMs - settings.startMs)
-        val totalMs = min(min(settings.durationMs, WhatsAppLimits.MAX_ANIMATED_DURATION_MS.toLong()), max(available, frameDuration * 2L))
-        val frameCount = max(2, (totalMs / frameDuration).toInt())
+        val (frameDuration, frameCount) = plan(src, settings, attempt.fps)
 
         val frames = ArrayList<AnimatedWebpMuxer.Frame>(frameCount)
         var previous: ByteArray? = null

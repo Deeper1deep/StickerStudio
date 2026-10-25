@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased - fast GIF conversion
+
+- GIFs are now read with an own sequential decoder (`GifDecoder`) instead of `android.graphics.Movie`,
+  which was extremely slow per frame (conversion took minutes, the editor preview stayed on one frame).
+- Conversion predicts the size from a few sample frames and starts at the first quality setting that
+  should fit, instead of fully encoding and discarding several too-big attempts.
+- New unit test `GifDecoderTest` (frames checked against Pillow, including transparency and disposal).
+
 ## Unreleased - one-screen home
 
 - Removed the bottom navigation bar. Home now has a small settings button on top, the create section
