@@ -320,3 +320,25 @@ fun LabeledRow(label: String, modifier: Modifier = Modifier, content: @Composabl
         content()
     }
 }
+
+/** A modal spinner; with [progress] (finished, total) it also says how far a batch has come. */
+@Composable
+fun BusyDialog(progress: Pair<Int, Int>? = null) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = {}) {
+        androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
+            Column(
+                Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                androidx.compose.material3.CircularProgressIndicator()
+                if (progress != null) {
+                    Text(
+                        androidx.compose.ui.res.stringResource(com.stickerstudio.app.R.string.import_progress, minOf(progress.first + 1, progress.second), progress.second),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+    }
+}

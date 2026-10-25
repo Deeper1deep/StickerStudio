@@ -50,7 +50,7 @@ import com.stickerstudio.app.ui.components.ScreenHeader
 import com.stickerstudio.app.ui.components.StatusPill
 import com.stickerstudio.app.ui.components.StickerThumb
 import com.stickerstudio.app.ui.rememberPackActions
-import com.stickerstudio.app.ui.rememberPackAdded
+import com.stickerstudio.app.ui.WhatsAppActionButton
 import kotlinx.coroutines.launch
 
 @Composable
@@ -120,16 +120,7 @@ fun PacksScreen(onOpenPack: (String) -> Unit) {
                                     }
                                 }
                                 LinearProgressIndicator(progress = { (n / 30f).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
-                                if (rememberPackAdded(pack.id)) {
-                                    StatusPill(
-                                        stringResource(R.string.pack_added_wa),
-                                        MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
-                                } else Button(
-                                    onClick = { actions.addToWhatsApp(pack.id) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) { Text(stringResource(R.string.add_to_whatsapp), style = MaterialTheme.typography.labelLarge) }
+                                WhatsAppActionButton(pack, actions, Modifier.fillMaxWidth())
                             }
                         }
                     }

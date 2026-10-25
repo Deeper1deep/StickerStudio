@@ -112,6 +112,7 @@
     <string name="home_my_packs">My packs</string>
     <string name="import_done">%1$d stickers added.</string>
     <string name="import_failed">%1$d pictures could not be read.</string>
+    <string name="import_progress">Converting %1$d of %2$d…</string>
     <string name="issue_dimensions">Sticker %1$d: the size must be exactly 512x512.</string>
     <string name="issue_duration">Sticker %1$d: the animation is longer than 10 seconds.</string>
     <string name="issue_emoji_many">Sticker %1$d has more than 3 emojis.</string>
@@ -163,6 +164,7 @@
     <string name="pack_ready">Pack is ready for WhatsApp</string>
     <string name="pack_ready_body">All requirements are met</string>
     <string name="pack_status">%1$d of %2$d stickers</string>
+    <string name="pack_update_wa">Update in WhatsApp</string>
     <string name="packs_empty_body">Create your first sticker pack with the + button.</string>
     <string name="packs_empty_title">No packs yet</string>
     <string name="packs_total">%1$d packs</string>

@@ -195,7 +195,7 @@ fun AppRoot() {
                     packId = id,
                     onBack = { nav.popBackStack() },
                     onEditor = { source, sticker -> nav.navigate(Routes.editor(source = source, pack = id, sticker = sticker)) },
-                    onAnimated = { nav.navigate(Routes.animated(id)) },
+                    onAnimated = { source, video -> nav.navigate(Routes.animated(id, source, video)) },
                 )
             }
             composable(

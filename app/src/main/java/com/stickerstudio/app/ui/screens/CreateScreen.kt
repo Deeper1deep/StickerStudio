@@ -54,6 +54,8 @@ import com.stickerstudio.app.data.PackEntity
 import com.stickerstudio.app.sticker.BitmapLoader
 import com.stickerstudio.app.ui.ImportReport
 import com.stickerstudio.app.ui.StickerImport
+import com.stickerstudio.app.ui.MediaImport
+import com.stickerstudio.app.ui.components.BusyDialog
 import com.stickerstudio.app.ui.components.MessageDialog
 import com.stickerstudio.app.ui.components.PackInfoDialog
 import com.stickerstudio.app.ui.importSourcePicture
@@ -98,89 +100,37 @@ fun CreateScreen(
         }
     }
 
-    fun kindOf(uri: Uri): MediaKind {
-        val header = try {
-            context.contentResolver.openInputStream(uri)?.use { i ->
-                val buf = ByteArray(16)
-                val n = i.read(buf)
-                if (n > 0) buf.copyOf(n) else null
-            }
-        } catch (e: Exception) {
-            null
-        }
-        var name: String? = null
-        try {
-            context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-                if (c.moveToFirst()) name = c.getString(0)
-            }
-        } catch (e: Exception) {
-            name = null
-        }
-        if (name == null) name = uri.lastPathSegment
-        return MediaKind.detect(header, context.contentResolver.getType(uri), name)
-    }
+    var progress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
-    fun isAnimatedKind(uri: Uri): Boolean = kindOf(uri).isAnimatedSource
-
-    fun openPicture(uri: Uri) {
+    /** One picked file: pictures open the editor, GIFs and videos open the animated editor. */
+    fun openSingle(uri: Uri) {
         scope.launch {
             busy = true
-            val name = importSourcePicture(context, uri)
+            val prepared = MediaImport.prepareSingle(context, uri)
             busy = false
-            if (name == null) errorRes = R.string.err_load_failed else withPack { onEditor(name, it) }
+            when (prepared) {
+                is MediaImport.Prepared.Picture -> withPack { onEditor(prepared.name, it) }
+                is MediaImport.Prepared.Animated -> withPack { onAnimated(it, prepared.name, prepared.isVideo) }
+                MediaImport.Prepared.Failed -> errorRes = R.string.err_load_failed
+            }
         }
     }
 
-    fun openAnimated(uri: Uri) {
-        scope.launch {
-            busy = true
-            val kind = withContext(Dispatchers.IO) { kindOf(uri) }
-            val isVideo = kind.isVideo
-            val name = withContext(Dispatchers.IO) {
-                try {
-                    BitmapLoader.copyRaw(context, uri, repo.paths.sources, kind.extension)
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            // A GIF with a single frame is not animated: edit it as a normal picture instead of failing.
-            val notAnimated = name != null && kind == MediaKind.GIF && withContext(Dispatchers.IO) {
-                try {
-                    java.io.File(repo.paths.sources, name).let { f ->
-                        try { com.stickerstudio.app.sticker.GifFrameSource(f).close(); false } finally { }
-                    }
-                } catch (e: Exception) {
-                    true
-                }
-            }
-            busy = false
-            when {
-                name == null -> errorRes = R.string.err_load_failed
-                notAnimated -> {
-                    java.io.File(repo.paths.sources, name).delete()
-                    openPicture(uri)
-                }
-                else -> withPack { onAnimated(it, name, isVideo) }
-            }
-        }
-    }
+    fun openPicture(uri: Uri) = openSingle(uri)
 
     /** Decides by file type what to do with whatever the user picked. */
     fun handlePicked(uris: List<Uri>) {
         if (uris.isEmpty()) return
         if (uris.size == 1) {
-            val uri = uris[0]
-            if (isAnimatedKind(uri)) openAnimated(uri) else openPicture(uri)
+            openSingle(uris[0])
             return
         }
-        val pictures = uris.filterNot(::isAnimatedKind)
-        val skipped = uris.size - pictures.size
         withPack { packId ->
             scope.launch {
                 busy = true
-                report = StickerImport.addImages(context, pictures, packId)
+                report = MediaImport.addMixed(context, uris, packId) { done, total -> progress = done to total }
+                progress = null
                 busy = false
-                if (skipped > 0) errorRes = R.string.create_animated_skipped
             }
         }
     }
@@ -247,7 +197,7 @@ fun CreateScreen(
         Text(stringResource(R.string.create_auto_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
-    if (busy) androidx.compose.ui.window.Dialog(onDismissRequest = {}) { CircularProgressIndicator() }
+    if (busy) BusyDialog(progress)
     if (askNewPack) {
         PackInfoDialog(
             title = stringResource(R.string.new_pack),

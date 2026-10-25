@@ -4,6 +4,15 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import com.stickerstudio.app.ui.MediaImport
+import com.stickerstudio.app.ui.WhatsAppActionButton
+import com.stickerstudio.app.ui.components.BusyDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,7 +83,6 @@ import com.stickerstudio.app.ui.components.MessageDialog
 import com.stickerstudio.app.ui.components.StickerThumb
 import com.stickerstudio.app.ui.components.TextInputDialog
 import com.stickerstudio.app.ui.rememberPackActions
-import com.stickerstudio.app.ui.rememberPackAdded
 import androidx.compose.foundation.layout.height
 import kotlinx.coroutines.launch
 
@@ -84,7 +92,7 @@ fun PackDetailScreen(
     packId: String,
     onBack: () -> Unit,
     onEditor: (source: String, sticker: String) -> Unit,
-    onAnimated: () -> Unit,
+    onAnimated: (source: String, isVideo: Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val repo = context.container.repository
@@ -100,18 +108,29 @@ fun PackDetailScreen(
     var replaceId by remember { mutableStateOf<String?>(null) }
     var report by remember { mutableStateOf<ImportReport?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var addMenu by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var readiness by remember { mutableStateOf<List<PackIssue>?>(null) }
     LaunchedEffect(pack, stickers) {
         val p = pack
         readiness = if (p == null) null else WhatsAppIntegration.validate(repo, p)
     }
 
-    val addPictures = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(30)) { uris ->
+    val addMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(30)) { uris ->
         if (uris.isNotEmpty()) scope.launch {
             busy = true
-            report = StickerImport.addImages(context, uris, packId)
-            busy = false
+            if (uris.size == 1) {
+                val prepared = MediaImport.prepareSingle(context, uris[0])
+                busy = false
+                when (prepared) {
+                    is MediaImport.Prepared.Picture -> onEditor(prepared.name, "")
+                    is MediaImport.Prepared.Animated -> onAnimated(prepared.name, prepared.isVideo)
+                    MediaImport.Prepared.Failed -> report = ImportReport(0, 1, null)
+                }
+            } else {
+                report = MediaImport.addMixed(context, uris, packId) { done, total -> progress = done to total }
+                progress = null
+                busy = false
+            }
         }
     }
     val replacePicture = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
@@ -129,147 +148,120 @@ fun PackDetailScreen(
             TopAppBar(
                 title = { Text(pack?.name ?: "", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
-                actions = {
-                    Box {
-                        IconButton(onClick = { addMenu = true }) { Icon(Icons.Filled.Add, stringResource(R.string.add_sticker)) }
-                        DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.create_batch)) },
-                                onClick = { addMenu = false; addPictures.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.create_blank)) },
-                                onClick = { addMenu = false; onEditor("", "") },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.create_animated)) },
-                                onClick = { addMenu = false; onAnimated() },
-                            )
-                        }
-                    }
-                },
             )
         },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            val p = pack
+        val p = pack
+        val freeSlots = (30 - stickers.size).coerceAtLeast(0)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.padding(padding).fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             if (p != null) {
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    StatusPill(
-                        stringResource(R.string.pack_status, stickers.size, 30),
-                        MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    Text(p.publisher, Modifier.padding(start = 10.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                val ready = readiness
-                if (ready != null) {
-                    val ok = ready.isEmpty()
-                    AppCard(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                        onClick = if (ok) null else ({ actions.issues = ready }),
-                    ) {
-                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            IconBadge(
-                                if (ok) Icons.Filled.CheckCircle else Icons.Filled.ErrorOutline,
-                                size = 44.dp,
-                                tint = if (ok) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.error,
-                                container = if (ok) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column {
+            Row(Modifier.padding(horizontal = 0.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                StatusPill(
+                    stringResource(R.string.pack_status, stickers.size, 30),
+                    MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(p.publisher, Modifier.padding(start = 10.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val ready = readiness
+            if (ready != null) {
+                val ok = ready.isEmpty()
+                AppCard(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp, vertical = 6.dp),
+                    onClick = if (ok) null else ({ actions.issues = ready }),
+                ) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        IconBadge(
+                            if (ok) Icons.Filled.CheckCircle else Icons.Filled.ErrorOutline,
+                            size = 44.dp,
+                            tint = if (ok) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.error,
+                            container = if (ok) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
+                        )
+                        Column {
+                            Text(
+                                if (ok) stringResource(R.string.pack_ready) else stringResource(R.string.pack_issues, ready.size),
+                                style = MaterialTheme.typography.titleSmall,
                             )
-                            Column {
-                                Text(
-                                    if (ok) stringResource(R.string.pack_ready) else stringResource(R.string.pack_issues, ready.size),
-                                    style = MaterialTheme.typography.titleSmall,
-                                )
-                                Text(
-                                    stringResource(if (ok) R.string.pack_ready_body else R.string.pack_issues_body),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            Text(
+                                stringResource(if (ok) R.string.pack_ready_body else R.string.pack_issues_body),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
-                }
-                if (stickers.any { it.animated } && stickers.any { !it.animated }) {
-                    Text(
-                        stringResource(R.string.pack_mixed_note),
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (rememberPackAdded(packId)) {
-                        Box(Modifier.weight(1f).height(48.dp), contentAlignment = Alignment.Center) {
-                            StatusPill(
-                                stringResource(R.string.pack_added_wa),
-                                MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                        }
-                    } else Button(
-                        onClick = { actions.addToWhatsApp(packId) },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary),
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.add_to_whatsapp)) }
-                    OutlinedButton(onClick = { actions.exportZip(packId) }) { Text(stringResource(R.string.export_zip)) }
                 }
             }
-            if (stickers.isEmpty()) {
-                EmptyState(stringResource(R.string.pack_empty_title), stringResource(R.string.pack_empty_body))
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(96.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(stickers, key = { it.id }) { s ->
-                        Box(
-                            Modifier.aspectRatio(1f).clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.surface)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
-                        ) {
-                            StickerThumb(
-                                repo.stickerFile(s),
-                                Modifier.fillMaxSize().padding(6.dp).clickable { previewing = s },
+            if (stickers.any { it.animated } && stickers.any { !it.animated }) {
+                Text(
+                    stringResource(R.string.pack_mixed_note),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(Modifier.padding(horizontal = 0.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                WhatsAppActionButton(p, actions, Modifier.weight(1f))
+                OutlinedButton(onClick = { actions.exportZip(packId) }) { Text(stringResource(R.string.export_zip)) }
+            }
+                    }
+                }
+            }
+                items(stickers, key = { it.id }) { s ->
+                    Box(
+                        Modifier.aspectRatio(1f).clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
+                    ) {
+                        StickerThumb(
+                            repo.stickerFile(s),
+                            Modifier.fillMaxSize().padding(6.dp).clickable { previewing = s },
+                        )
+                        if (s.animated) {
+                            StatusPill(
+                                stringResource(R.string.animated),
+                                MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
+                                Modifier.align(Alignment.BottomEnd).padding(6.dp),
                             )
-                            if (s.animated) {
-                                StatusPill(
-                                    stringResource(R.string.animated),
-                                    MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
-                                    Modifier.align(Alignment.BottomEnd).padding(6.dp),
-                                )
-                            }
-                            Text(
-                                s.emojis,
-                                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp),
-                                style = MaterialTheme.typography.labelMedium,
+                        }
+                        Text(
+                            s.emojis,
+                            modifier = Modifier.align(Alignment.BottomStart).padding(4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        IconButton(onClick = { menuFor = s }, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
+                            Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
+                        }
+                        DropdownMenu(expanded = menuFor?.id == s.id, onDismissRequest = { menuFor = null }) {
+                            if (!s.animated) DropdownMenuItem(
+                                text = { Text(stringResource(R.string.edit_sticker)) },
+                                onClick = { menuFor = null; onEditor(s.sourceFile.orEmpty(), s.id) },
                             )
-                            IconButton(onClick = { menuFor = s }, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
-                                Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
-                            }
-                            DropdownMenu(expanded = menuFor?.id == s.id, onDismissRequest = { menuFor = null }) {
-                                if (!s.animated) DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.edit_sticker)) },
-                                    onClick = { menuFor = null; onEditor(s.sourceFile.orEmpty(), s.id) },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.replace_image)) },
-                                    onClick = { menuFor = null; replaceId = s.id; replacePicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                                )
-                                DropdownMenuItem(text = { Text(stringResource(R.string.sticker_emojis)) }, onClick = { menuFor = null; emojiFor = s })
-                                DropdownMenuItem(text = { Text(stringResource(R.string.move_earlier)) }, onClick = { menuFor = null; scope.launch { repo.moveSticker(s.id, -1) } })
-                                DropdownMenuItem(text = { Text(stringResource(R.string.move_later)) }, onClick = { menuFor = null; scope.launch { repo.moveSticker(s.id, 1) } })
-                                DropdownMenuItem(text = { Text(stringResource(R.string.set_tray)) }, onClick = { menuFor = null; scope.launch { repo.setTraySticker(packId, s.id) } })
-                                DropdownMenuItem(text = { Text(stringResource(R.string.delete)) }, onClick = { menuFor = null; deleteFor = s })
-                            }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.replace_image)) },
+                                onClick = { menuFor = null; replaceId = s.id; replacePicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                            )
+                            DropdownMenuItem(text = { Text(stringResource(R.string.sticker_emojis)) }, onClick = { menuFor = null; emojiFor = s })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.move_earlier)) }, onClick = { menuFor = null; scope.launch { repo.moveSticker(s.id, -1) } })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.move_later)) }, onClick = { menuFor = null; scope.launch { repo.moveSticker(s.id, 1) } })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.set_tray)) }, onClick = { menuFor = null; scope.launch { repo.setTraySticker(packId, s.id) } })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.delete)) }, onClick = { menuFor = null; deleteFor = s })
                         }
                     }
                 }
+            items(count = freeSlots, key = { "slot_$it" }) {
+                EmptySlot(onClick = { addMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) })
             }
         }
     }
 
-    if (busy) androidx.compose.ui.window.Dialog(onDismissRequest = {}) { CircularProgressIndicator() }
+    if (busy) BusyDialog(progress)
     previewing?.let { s ->
         AlertDialog(
             onDismissRequest = { previewing = null },
@@ -302,4 +294,26 @@ fun PackDetailScreen(
         MessageDialog(stringResource(R.string.create_batch), text) { report = null }
     }
     PackActionsDialogs(actions)
+}
+
+/** An empty place in the 30-sticker grid: a dashed frame with a plus, tapping it opens the gallery. */
+@Composable
+private fun EmptySlot(onClick: () -> Unit) {
+    val line = MaterialTheme.colorScheme.outline
+    Box(
+        Modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .drawBehind {
+                drawRoundRect(
+                    color = line,
+                    cornerRadius = CornerRadius(20.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))),
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Filled.Add, stringResource(R.string.add_sticker), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+    }
 }

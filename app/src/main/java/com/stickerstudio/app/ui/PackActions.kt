@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,6 +33,7 @@ import com.stickerstudio.app.data.PackEntity
 import com.stickerstudio.app.data.PackRepository
 import com.stickerstudio.app.whatsapp.IssueCode
 import com.stickerstudio.app.whatsapp.PackIssue
+import com.stickerstudio.app.whatsapp.WaSyncStore
 import com.stickerstudio.app.whatsapp.WhatsAppIntegration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -54,6 +56,7 @@ class PackActionsController(
     var launchEnable: (Intent) -> Unit = {}
     var launchZip: (String) -> Unit = {}
     private var zipPack: PackEntity? = null
+    private var sentPack: PackEntity? = null
 
     fun addToWhatsApp(packId: String) {
         scope.launch {
@@ -80,6 +83,7 @@ class PackActionsController(
 
     fun start(pack: PackEntity, target: String) {
         chooser = null
+        sentPack = pack
         try {
             launchEnable(WhatsAppIntegration.enableIntent(context, pack, target))
         } catch (e: ActivityNotFoundException) {
@@ -89,6 +93,7 @@ class PackActionsController(
 
     fun onEnableResult(resultCode: Int, data: Intent?) {
         if (resultCode == Activity.RESULT_OK) {
+            sentPack?.let { WaSyncStore.record(context, it.id, it.imageDataVersion) }
             info = R.string.wa_added
         } else {
             val error = data?.getStringExtra("validation_error")
@@ -220,13 +225,17 @@ fun issueMessage(context: Context, i: PackIssue): String {
     }
 }
 
+enum class WaState { NOT_ADDED, ADDED, NEEDS_UPDATE }
+
 /**
- * True while the pack is installed in WhatsApp / WhatsApp Business. It is checked again each time
- * the app comes back to the front, so removing the pack in WhatsApp brings the button back.
+ * Where the pack stands in WhatsApp: not added, added, or added but edited since. It is checked
+ * again each time the app comes back to the front, so removing the pack in WhatsApp brings the
+ * button back.
  */
 @Composable
-fun rememberPackAdded(packId: String): Boolean {
+fun rememberWaState(pack: PackEntity): WaState {
     val context = LocalContext.current
+    val packId = pack.id
     var added by remember(packId) { mutableStateOf(false) }
     var tick by remember { mutableStateOf(0) }
     val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
@@ -242,5 +251,39 @@ fun rememberPackAdded(packId: String): Boolean {
             WhatsAppIntegration.installedTargets(context).any { WhatsAppIntegration.isPackAdded(context, it, packId) }
         }
     }
-    return added
+    if (!added) return WaState.NOT_ADDED
+    val last = WaSyncStore.lastSent(context, packId)
+    return if (last != null && last != pack.imageDataVersion) WaState.NEEDS_UPDATE else WaState.ADDED
+}
+
+/** "Add to WhatsApp", "Update in WhatsApp" or the "Added" mark, depending on [rememberWaState]. */
+@Composable
+fun WhatsAppActionButton(pack: PackEntity, actions: PackActionsController, modifier: Modifier = Modifier) {
+    val state = rememberWaState(pack)
+    if (state == WaState.ADDED) {
+        androidx.compose.foundation.layout.Box(
+            modifier.heightIn(min = 48.dp),
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) {
+            com.stickerstudio.app.ui.components.StatusPill(
+                stringResource(R.string.pack_added_wa),
+                androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
+                androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+    } else {
+        androidx.compose.material3.Button(
+            onClick = { actions.addToWhatsApp(pack.id) },
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondary,
+            ),
+            modifier = modifier,
+        ) {
+            Text(
+                stringResource(if (state == WaState.NEEDS_UPDATE) R.string.pack_update_wa else R.string.add_to_whatsapp),
+                maxLines = 1,
+            )
+        }
+    }
 }
