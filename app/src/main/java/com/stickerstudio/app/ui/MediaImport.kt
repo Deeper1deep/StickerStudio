@@ -84,7 +84,7 @@ object MediaImport {
 
     /**
      * Adds many files at once: pictures are fitted, GIFs and videos are converted to animated
-     * stickers with default settings (up to 6 seconds each). [onProgress] gets (finished, total).
+     * stickers with default settings (whole clips, WhatsApp allows at most 10 seconds). [onProgress] gets (finished, total).
      */
     suspend fun addMixed(
         context: Context,
@@ -149,5 +149,5 @@ object MediaImport {
         }
     }
 
-    private const val MAX_BATCH_MS = 6000L
+    private const val MAX_BATCH_MS = 10_000L   // WhatsApp's limit; shorter clips are kept whole
 }

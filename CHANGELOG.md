@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.0.0 — unreleased
-- Pack screen is now a grid of 30 slots; each empty slot has a "+" that opens the gallery (pictures, GIFs and videos). One file opens its editor; several files are added in one go (GIFs / videos are converted to animated stickers, up to 6 s each, with progress). The "+" in the top bar was removed.
+- Pack screen is now a grid of 30 slots; each empty slot has a "+" that opens the gallery (pictures, GIFs and videos). One file opens its editor; several files are added in one go (GIFs / videos are converted to animated stickers, whole clips up to WhatsApp's 10 s limit, with progress). The "+" in the top bar was removed.
 - "Update in WhatsApp" appears when a pack that is already in WhatsApp has been edited since it was last sent.
 - Smoother animated preview: up to 90 frames (was 30), timed from the display clock, and no half-built loop while frames are still being prepared.
 - "Add to WhatsApp" is replaced by "Added to WhatsApp" while the pack is installed there, and comes back after it is removed (checked each time the app returns to the front).

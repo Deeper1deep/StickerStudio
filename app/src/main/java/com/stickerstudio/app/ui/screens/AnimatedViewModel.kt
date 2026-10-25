@@ -118,7 +118,7 @@ class AnimatedViewModel(
             it.copy(
                 loading = false, sourceName = name, isVideo = isVideo, durationMs = info.first,
                 sourceW = info.second, sourceH = info.third,
-                settings = AnimatedSettings(startMs = 0, durationMs = minOf(3000L, limit)),
+                settings = AnimatedSettings(startMs = 0, durationMs = limit),   // the whole clip (WhatsApp allows at most 10 s)
                 resultBytes = null,
             )
         }
