@@ -57,6 +57,10 @@
     <string name="create_subtitle">اختر أي ملف، والتطبيق يعرف نوعه وحده.</string>
     <string name="create_target">الحفظ في حزمة</string>
     <string name="create_title">إنشاء ملصق</string>
+    <string name="credits_contact">اضغط للتواصل عبر واتساب</string>
+    <string name="credits_made_by">صُنع بواسطة</string>
+    <string name="credits_rights">© 2026 Deeper. جميع الحقوق محفوظة.</string>
+    <string name="credits_title">حقوق التطبيق</string>
     <string name="crop_done">تم</string>
     <string name="crop_free">حر</string>
     <string name="crop_hint">اسحب الإطار. القص يتبع شكل صورتك الأصلية (%1$d × %2$d) والملف النهائي يتوسط لوحة شفافة 512×512 بدون تمطيط.</string>
@@ -145,6 +149,7 @@
     <string name="opacity">الشفافية</string>
     <string name="outline_color">لون الحد</string>
     <string name="outline_width">سمك الحد</string>
+    <string name="pack_added_wa">مضافة في واتساب</string>
     <string name="pack_count">%1$d ملصق</string>
     <string name="pack_empty_body">واتساب يحتاج 3 ملصقات على الأقل. أضف صورًا بزر +.</string>
     <string name="pack_empty_title">الحزمة فارغة</string>

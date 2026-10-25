@@ -74,6 +74,8 @@ import com.stickerstudio.app.ui.components.MessageDialog
 import com.stickerstudio.app.ui.components.StickerThumb
 import com.stickerstudio.app.ui.components.TextInputDialog
 import com.stickerstudio.app.ui.rememberPackActions
+import com.stickerstudio.app.ui.rememberPackAdded
+import androidx.compose.foundation.layout.height
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -196,7 +198,14 @@ fun PackDetailScreen(
                     )
                 }
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
+                    if (rememberPackAdded(packId)) {
+                        Box(Modifier.weight(1f).height(48.dp), contentAlignment = Alignment.Center) {
+                            StatusPill(
+                                stringResource(R.string.pack_added_wa),
+                                MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        }
+                    } else Button(
                         onClick = { actions.addToWhatsApp(packId) },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary),
                         modifier = Modifier.weight(1f),

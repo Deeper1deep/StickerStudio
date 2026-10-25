@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.0.0 — unreleased
+- "Add to WhatsApp" is replaced by "Added to WhatsApp" while the pack is installed there, and comes back after it is removed (checked each time the app returns to the front).
+- Credits card in Settings (tap opens the author's WhatsApp chat).
+- WebM decoding no longer waits on stalled decoders (prefers the software VP9 decoder, feeds ahead, fails fast). A one-frame GIF opens in the normal picture editor.
 - WebM / video support (VP9 WebM is demuxed and decoded frame by frame, so files without a seek index animate, and a separate alpha stream keeps transparency): file type is detected from the file contents (not only the MIME type), then converted like a GIF to an animated WebP sticker. Transparency inside WebM stickers is not preserved (Android decodes them without alpha).
 - Telegram-style update popup at launch (version, size, changelog: Update now / Later / Skip). Every CI build on main now publishes a test release with `update.json`, so the app sees it.
 - Cairo font bundled (SIL Open Font License) for Arabic and Latin text.

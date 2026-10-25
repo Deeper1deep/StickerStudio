@@ -46,6 +46,8 @@ import com.stickerstudio.app.ui.components.SectionTitle
 import com.stickerstudio.app.ui.components.StickerThumb
 import com.stickerstudio.app.ui.rememberPackActions
 import com.stickerstudio.app.update.UpdateUiState
+import com.stickerstudio.app.ui.rememberPackAdded
+import com.stickerstudio.app.ui.components.StatusPill
 
 @Composable
 fun HomeScreen(
@@ -144,7 +146,12 @@ fun HomeScreen(
                                 progress = { (n / 30f).coerceIn(0f, 1f) },
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                             )
-                            Button(
+                            if (rememberPackAdded(p.id)) {
+                                StatusPill(
+                                    stringResource(R.string.pack_added_wa),
+                                    MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            } else Button(
                                 onClick = { actions.addToWhatsApp(p.id) },
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary),
                                 modifier = Modifier.fillMaxWidth(),

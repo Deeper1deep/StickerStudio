@@ -219,3 +219,28 @@ fun issueMessage(context: Context, i: PackIssue): String {
         IssueCode.TRAY_INVALID -> context.getString(R.string.issue_tray_invalid)
     }
 }
+
+/**
+ * True while the pack is installed in WhatsApp / WhatsApp Business. It is checked again each time
+ * the app comes back to the front, so removing the pack in WhatsApp brings the button back.
+ */
+@Composable
+fun rememberPackAdded(packId: String): Boolean {
+    val context = LocalContext.current
+    var added by remember(packId) { mutableStateOf(false) }
+    var tick by remember { mutableStateOf(0) }
+    val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(owner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) tick++
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
+    androidx.compose.runtime.LaunchedEffect(packId, tick) {
+        added = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            WhatsAppIntegration.installedTargets(context).any { WhatsAppIntegration.isPackAdded(context, it, packId) }
+        }
+    }
+    return added
+}

@@ -28,6 +28,8 @@ class WebmFrameSource(file: File) : FrameSource {
     private var colorDec: Vp9Decoder? = null
     private var alphaDec: Vp9Decoder? = null
     private var fed = 0
+    private var eosSent = false
+    private var broken = false
     private var lastIndex = -1
     private var lastPixels: IntArray? = null
 
@@ -47,6 +49,7 @@ class WebmFrameSource(file: File) : FrameSource {
         colorDec = Vp9Decoder(width, height, needChroma = true)
         alphaDec = if (track.hasAlpha) Vp9Decoder(width, height, needChroma = false) else null
         fed = 0
+        eosSent = false
     }
 
     override fun frameAt(timeMs: Long): Bitmap? {
@@ -63,14 +66,22 @@ class WebmFrameSource(file: File) : FrameSource {
     }
 
     private fun decodeUpTo(idx: Int): IntArray? {
+        if (broken) throw IOException("WebM decoder stalled")
         val c = colorDec ?: return null
         val a = alphaDec
-        while (fed <= idx) {
+        // Some decoders hold back a few frames, so feed a little ahead of the one we want.
+        val target = minOf(idx + LOOKAHEAD, track.frames.size - 1)
+        while (fed <= target) {
             val f = track.frames[fed]
             val pts = f.ptsMs * 1000L
             c.feed(f.data, pts) { a?.pump() }
             if (a != null) a.feed(f.alpha ?: f.data, pts) { c.pump() }
             fed++
+        }
+        if (fed >= track.frames.size && !eosSent) {
+            c.sendEos { a?.pump() }
+            a?.sendEos { c.pump() }
+            eosSent = true
         }
         val pts = track.frames[idx].ptsMs * 1000L
         val deadline = SystemClock.elapsedRealtime() + WAIT_MS
@@ -81,7 +92,10 @@ class WebmFrameSource(file: File) : FrameSource {
             yuv = c.take(pts) ?: yuv
             al = a?.take(pts) ?: al
             if (yuv != null && (a == null || al != null)) break
-            if (SystemClock.elapsedRealtime() > deadline) return null
+            if (SystemClock.elapsedRealtime() > deadline) {
+                broken = true   // fail fast instead of waiting for every remaining frame
+                throw IOException("WebM decoder stalled")
+            }
             Thread.sleep(2)
         }
         c.dropBefore(pts); a?.dropBefore(pts)
@@ -100,7 +114,8 @@ class WebmFrameSource(file: File) : FrameSource {
 
     companion object {
         private const val MAX_BYTES = 64L * 1024 * 1024
-        private const val WAIT_MS = 4000L
+        private const val WAIT_MS = 2500L
+        private const val LOOKAHEAD = 6
 
         fun looksLikeWebm(file: File): Boolean = try {
             file.inputStream().use { i -> val b = ByteArray(4); i.read(b) == 4 && WebmDemuxer.isWebm(b) }
@@ -114,7 +129,7 @@ private class Yuv(val y: ByteArray, val u: ByteArray, val v: ByteArray)
 
 /** Synchronous wrapper around the system VP9 decoder that keeps outputs by presentation time. */
 private class Vp9Decoder(private val w: Int, private val h: Int, private val needChroma: Boolean) {
-    private val codec: MediaCodec = MediaCodec.createDecoderByType(MIME)
+    private val codec: MediaCodec = createCodec()
     private val pending = HashMap<Long, Yuv>()
     private val info = MediaCodec.BufferInfo()
 
@@ -126,7 +141,7 @@ private class Vp9Decoder(private val w: Int, private val h: Int, private val nee
     }
 
     fun feed(data: ByteArray, ptsUs: Long, whileWaiting: () -> Unit) {
-        val deadline = SystemClock.elapsedRealtime() + 4000L
+        val deadline = SystemClock.elapsedRealtime() + 3000L
         while (true) {
             val i = codec.dequeueInputBuffer(5_000)
             if (i >= 0) {
@@ -142,17 +157,32 @@ private class Vp9Decoder(private val w: Int, private val h: Int, private val nee
         }
     }
 
+    fun sendEos(whileWaiting: () -> Unit) {
+        val deadline = SystemClock.elapsedRealtime() + 2000L
+        while (SystemClock.elapsedRealtime() < deadline) {
+            val i = codec.dequeueInputBuffer(5_000)
+            if (i >= 0) {
+                codec.queueInputBuffer(i, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                return
+            }
+            pump()
+            whileWaiting()
+        }
+    }
+
     fun pump() {
         while (true) {
             val o = codec.dequeueOutputBuffer(info, 0)
             when {
                 o >= 0 -> {
                     try {
-                        val img = codec.getOutputImage(o)
+                        val img = if (info.size > 0) codec.getOutputImage(o) else null
                         if (img != null) {
                             pending[info.presentationTimeUs] = copy(img)
                             img.close()
                         }
+                    } catch (e: IllegalStateException) {
+                        // an empty / end-of-stream buffer: nothing to copy
                     } finally {
                         codec.releaseOutputBuffer(o, false)
                     }
@@ -197,5 +227,17 @@ private class Vp9Decoder(private val w: Int, private val h: Int, private val nee
 
     companion object {
         private const val MIME = "video/x-vnd.on2.vp9"
+
+        /** The built-in software decoder is the most predictable; vendor ones may buffer or use odd formats. */
+        private fun createCodec(): MediaCodec {
+            for (name in listOf("c2.android.vp9.decoder", "OMX.google.vp9.decoder")) {
+                try {
+                    return MediaCodec.createByCodecName(name)
+                } catch (e: Exception) {
+                    // try the next one
+                }
+            }
+            return MediaCodec.createDecoderByType(MIME)
+        }
     }
 }

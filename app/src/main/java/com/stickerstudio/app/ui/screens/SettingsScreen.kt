@@ -11,6 +11,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -43,6 +44,8 @@ import com.stickerstudio.app.ui.components.AppCard
 import com.stickerstudio.app.ui.components.IconBadge
 import com.stickerstudio.app.ui.components.ScreenHeader
 import kotlinx.coroutines.launch
+
+private const val CONTACT_URL = "https://wa.me/qr/BTFMWNAXQXM3L1"
 
 @Composable
 fun SettingsScreen(onOpenUpdates: () -> Unit) {
@@ -97,6 +100,32 @@ fun SettingsScreen(onOpenUpdates: () -> Unit) {
                     Switch(checked = auto, onCheckedChange = { scope.launch { settings.setAutoUpdateCheck(it) } })
                 }
                 OutlinedButton(onClick = onOpenUpdates, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_open_updates)) }
+            }
+
+            AppCard(
+                onClick = {
+                    try {
+                        context.startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(CONTACT_URL))
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        // no app can open the link: nothing to do
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        IconBadge(Icons.Filled.Favorite, size = 40.dp)
+                        Column {
+                            Text(stringResource(R.string.credits_title), style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.credits_made_by) + " @Deeper", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    Text(stringResource(R.string.credits_contact), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.credits_rights), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
 
             Text(

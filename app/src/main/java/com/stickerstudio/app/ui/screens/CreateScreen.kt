@@ -143,8 +143,25 @@ fun CreateScreen(
                     null
                 }
             }
+            // A GIF with a single frame is not animated: edit it as a normal picture instead of failing.
+            val notAnimated = name != null && kind == MediaKind.GIF && withContext(Dispatchers.IO) {
+                try {
+                    java.io.File(repo.paths.sources, name).let { f ->
+                        try { com.stickerstudio.app.sticker.GifFrameSource(f).close(); false } finally { }
+                    }
+                } catch (e: Exception) {
+                    true
+                }
+            }
             busy = false
-            if (name == null) errorRes = R.string.err_load_failed else withPack { onAnimated(it, name, isVideo) }
+            when {
+                name == null -> errorRes = R.string.err_load_failed
+                notAnimated -> {
+                    java.io.File(repo.paths.sources, name).delete()
+                    openPicture(uri)
+                }
+                else -> withPack { onAnimated(it, name, isVideo) }
+            }
         }
     }
 

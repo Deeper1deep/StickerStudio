@@ -57,6 +57,10 @@
     <string name="create_subtitle">Pick any file. The app recognises its type by itself.</string>
     <string name="create_target">Save into pack</string>
     <string name="create_title">Create a sticker</string>
+    <string name="credits_contact">Tap to chat on WhatsApp</string>
+    <string name="credits_made_by">Made by</string>
+    <string name="credits_rights">© 2026 Deeper. All rights reserved.</string>
+    <string name="credits_title">Credits</string>
     <string name="crop_done">Done</string>
     <string name="crop_free">Free</string>
     <string name="crop_hint">Drag the frame. It follows your picture\'s own shape (%1$d × %2$d); the final file is centred on a transparent 512×512 canvas without stretching.</string>
@@ -145,6 +149,7 @@
     <string name="opacity">Opacity</string>
     <string name="outline_color">Outline colour</string>
     <string name="outline_width">Outline width</string>
+    <string name="pack_added_wa">Added to WhatsApp</string>
     <string name="pack_count">%1$d stickers</string>
     <string name="pack_empty_body">WhatsApp needs at least 3 stickers. Add pictures with the + button.</string>
     <string name="pack_empty_title">This pack is empty</string>
