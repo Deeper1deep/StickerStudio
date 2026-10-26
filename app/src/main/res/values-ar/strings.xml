@@ -38,6 +38,8 @@
     <string name="choose_whatsapp">الإضافة إلى أي تطبيق؟</string>
     <string name="clear_drawing">مسح الرسم</string>
     <string name="clear_erasing">مسح التعديلات</string>
+    <string name="convert_eta">المتبقي حوالي %1$d ثانية</string>
+    <string name="convert_working">جارٍ الضغط ليناسب واتساب…</string>
     <string name="create_animated">ملصق متحرك</string>
     <string name="create_animated_hint">حوّل GIF أو فيديو</string>
     <string name="create_animated_skipped">الملفات المتحركة (GIF / فيديو) تُضاف واحدًا واحدًا، وتم تخطيها من هذه الدفعة.</string>
@@ -52,6 +54,9 @@
     <string name="create_files_hint">أي ملف صورة على الجهاز</string>
     <string name="create_gallery">من المعرض</string>
     <string name="create_gallery_hint">اختر صورة وعدّلها</string>
+    <string name="create_hero_cta">إنشاء استيكر جديد</string>
+    <string name="create_hero_sub">صورة أو GIF أو فيديو — ونحوّله لاستيكر واتساب</string>
+    <string name="create_hero_title">اصنع استيكرك الآن</string>
     <string name="create_pick_hint">الـ GIF والفيديو يفتحان في المحرر المتحرك تلقائيًا</string>
     <string name="create_pick_title">صورة · GIF · فيديو</string>
     <string name="create_subtitle">اختر أي ملف، والتطبيق يعرف نوعه وحده.</string>

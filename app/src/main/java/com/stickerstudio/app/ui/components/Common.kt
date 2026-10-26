@@ -212,6 +212,17 @@ fun AppCard(
     }
 }
 
+/** Thin rounded progress bar with the violet -> aqua gradient. */
+@Composable
+fun BrandProgress(progress: Float, modifier: Modifier = Modifier, height: Dp = 8.dp) {
+    val p = progress.coerceIn(0f, 1f)
+    Box(modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(height)).background(MaterialTheme.colorScheme.surfaceVariant)) {
+        if (p > 0f) {
+            Box(Modifier.fillMaxWidth(p).height(height).clip(RoundedCornerShape(height)).background(com.stickerstudio.app.ui.theme.brandBrush()))
+        }
+    }
+}
+
 /** Big screen title with an optional subtitle and a trailing action. */
 @Composable
 fun ScreenHeader(

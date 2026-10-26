@@ -3,6 +3,10 @@ package com.stickerstudio.app.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import com.stickerstudio.app.ui.components.BrandProgress
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -261,26 +265,39 @@ private fun PackCard(
     modifier: Modifier = Modifier,
 ) {
     val repo = LocalContext.current.container.repository
+    val stickers by repo.observeStickers(pack.id).collectAsState(initial = emptyList())
     var menu by remember { mutableStateOf(false) }
     AppCard(onClick = onOpen, modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // a peek at the first four stickers
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (i in 0 until 4) {
+                    val sticker = stickers.getOrNull(i)
+                    if (sticker != null) {
+                        StickerThumb(repo.stickerFile(sticker), Modifier.weight(1f).aspectRatio(1f))
+                    } else {
+                        Box(
+                            Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                        )
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                StickerThumb(repo.trayFile(pack), Modifier.size(64.dp))
-                Column(Modifier.weight(1f).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(pack.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                     Text(pack.publisher, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        StatusPill(
-                            stringResource(R.string.pack_status, count, 30),
-                            MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                        if (pack.animated) {
-                            StatusPill(
-                                stringResource(R.string.animated),
-                                MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                        }
-                    }
+                }
+                StatusPill(
+                    stringResource(R.string.pack_status, count, 30),
+                    MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                if (pack.animated) {
+                    StatusPill(
+                        stringResource(R.string.animated),
+                        MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer,
+                        Modifier.padding(start = 6.dp),
+                    )
                 }
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more)) }
@@ -298,7 +315,7 @@ private fun PackCard(
                     }
                 }
             }
-            LinearProgressIndicator(progress = { (count / 30f).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+            BrandProgress(count / 30f)
             WhatsAppActionButton(pack, actions, Modifier.fillMaxWidth())
         }
     }

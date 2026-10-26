@@ -13,52 +13,69 @@ import com.stickerstudio.app.R
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-// Palette: violet primary, mint secondary, soft lavender surfaces (light) / deep ink (dark).
+// Palette: violet primary + aqua accent, WhatsApp-green action colour. Dark is the signature look
+// (deep ink surfaces, neon accents); light is the same system on soft lavender.
 private val LightColors = lightColorScheme(
     primary = Color(0xFF6D4AFF),
     onPrimary = Color.White,
     primaryContainer = Color(0xFFE9E3FF),
-    onPrimaryContainer = Color(0xFF1B0063),
-    secondary = Color(0xFF19B98A),
-    onSecondary = Color(0xFF04281F),
-    secondaryContainer = Color(0xFFC9F5E6),
-    onSecondaryContainer = Color(0xFF0B6B52),
-    tertiary = Color(0xFFFFC53D),
-    background = Color(0xFFFAF9FF),
+    onPrimaryContainer = Color(0xFF2A12A8),
+    secondary = Color(0xFF16A35A),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFCFF3DF),
+    onSecondaryContainer = Color(0xFF0A5C32),
+    tertiary = Color(0xFF00B89A),
+    background = Color(0xFFF6F4FF),
     onBackground = Color(0xFF17151F),
     surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF17151F),
-    surfaceVariant = Color(0xFFEEEAFB),
-    onSurfaceVariant = Color(0xFF5E5A70),
-    outline = Color(0xFFB9B6CC),
+    surfaceVariant = Color(0xFFEFEBFF),
+    onSurfaceVariant = Color(0xFF605B78),
+    outline = Color(0xFFB4B0CB),
     outlineVariant = Color(0xFFE4E0F2),
     error = Color(0xFFBA1A1A),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF7B5CFF),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFF3A2A9E),
-    onPrimaryContainer = Color(0xFFE9E3FF),
-    secondary = Color(0xFF19D3A2),
-    onSecondary = Color(0xFF00382F),
-    secondaryContainer = Color(0xFF005046),
-    onSecondaryContainer = Color(0xFFC9F5E6),
-    tertiary = Color(0xFFFFC53D),
-    background = Color(0xFF0E0D14),
-    onBackground = Color(0xFFF1EFF8),
-    surface = Color(0xFF17151F),
-    onSurface = Color(0xFFF1EFF8),
-    surfaceVariant = Color(0xFF262336),
-    onSurfaceVariant = Color(0xFFB9B6CC),
-    outline = Color(0xFF4A4660),
-    outlineVariant = Color(0xFF2E2B42),
+    primary = Color(0xFF8F6BFF),
+    onPrimary = Color(0xFF0B0B14),
+    primaryContainer = Color(0xFF241F42),
+    onPrimaryContainer = Color(0xFFC9BAFF),
+    secondary = Color(0xFF27E27E),
+    onSecondary = Color(0xFF05240F),
+    secondaryContainer = Color(0xFF0F3A23),
+    onSecondaryContainer = Color(0xFF9DF5C4),
+    tertiary = Color(0xFF26E6C4),
+    background = Color(0xFF0B0B14),
+    onBackground = Color(0xFFF2F1FA),
+    surface = Color(0xFF15151F),
+    onSurface = Color(0xFFF2F1FA),
+    surfaceVariant = Color(0xFF1D1D2B),
+    onSurfaceVariant = Color(0xFFA19EBA),
+    outline = Color(0xFF4A4A63),
+    outlineVariant = Color(0xFF2A2A3C),
     error = Color(0xFFFFB4AB),
 )
+
+/** True when the current theme is the dark one. */
+@Composable
+fun isDarkTheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+/** Violet -> aqua, used for progress bars and accents. */
+@Composable
+fun brandBrush(): Brush = Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary))
+
+/** Gradient behind the big "create" card. */
+@Composable
+fun heroBrush(): Brush =
+    if (isDarkTheme()) Brush.linearGradient(listOf(Color(0xFF2B1F6E), Color(0xFF10343B)))
+    else Brush.linearGradient(listOf(Color(0xFF6D4AFF), Color(0xFFA184FF)))
 
 private val AppShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),

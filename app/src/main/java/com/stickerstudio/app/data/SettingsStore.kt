@@ -26,7 +26,7 @@ class SettingsStore(private val context: Context) {
     }
 
     val theme: Flow<ThemeMode> = context.settingsDataStore.data.map { prefs ->
-        ThemeMode.entries.firstOrNull { it.name == prefs[Keys.THEME] } ?: ThemeMode.SYSTEM
+        ThemeMode.entries.firstOrNull { it.name == prefs[Keys.THEME] } ?: ThemeMode.DARK
     }
 
     val autoUpdateCheck: Flow<Boolean> = context.settingsDataStore.data.map { it[Keys.AUTO_UPDATE_CHECK] ?: true }

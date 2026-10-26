@@ -38,6 +38,8 @@
     <string name="choose_whatsapp">Add to which app?</string>
     <string name="clear_drawing">Clear drawing</string>
     <string name="clear_erasing">Clear erasing</string>
+    <string name="convert_eta">About %1$d s left</string>
+    <string name="convert_working">Compressing to fit WhatsApp…</string>
     <string name="create_animated">Animated sticker</string>
     <string name="create_animated_hint">Convert a GIF or video</string>
     <string name="create_animated_skipped">Animated files (GIF / video) are added one at a time; they were skipped from this batch.</string>
@@ -52,6 +54,9 @@
     <string name="create_files_hint">Any image file on the device</string>
     <string name="create_gallery">From gallery</string>
     <string name="create_gallery_hint">Pick one picture and edit it</string>
+    <string name="create_hero_cta">Create a new sticker</string>
+    <string name="create_hero_sub">A picture, GIF or video — we turn it into a WhatsApp sticker</string>
+    <string name="create_hero_title">Make your sticker now</string>
     <string name="create_pick_hint">GIF and video open in the animated editor automatically</string>
     <string name="create_pick_title">Picture · GIF · Video</string>
     <string name="create_subtitle">Pick any file. The app recognises its type by itself.</string>

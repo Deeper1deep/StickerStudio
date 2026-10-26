@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased - new visual design
+
+- New design system: deep-ink dark theme with violet + aqua accents (now the default; light theme kept,
+  same system), WhatsApp-green action colour, gradient progress bars.
+- Home: gradient "create" hero card with one big call-to-action, outlined source tiles, pack cards that
+  show the first four stickers.
+- Conversion screen: progress card with percentage and estimated time left.
+
 ## Unreleased - import / export .wastickers
 
 - New "Import" button on the home screen: creates a pack from a `.wastickers` or `.zip` file

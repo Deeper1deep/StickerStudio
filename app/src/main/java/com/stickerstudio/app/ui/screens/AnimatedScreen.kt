@@ -191,9 +191,32 @@ fun AnimatedScreen(
                     )
 
                     if (ui.converting) {
-                        LinearProgressIndicator(progress = { ui.progress }, modifier = Modifier.fillMaxWidth())
-                        Text("${(ui.progress * 100).toInt()}%")
-                        OutlinedButton(onClick = vm::cancel) { Text(stringResource(R.string.cancel)) }
+                        var startedAt by remember { androidx.compose.runtime.mutableStateOf(0L) }
+                        LaunchedEffect(Unit) { startedAt = android.os.SystemClock.elapsedRealtime() }
+                        val elapsed = (android.os.SystemClock.elapsedRealtime() - startedAt).coerceAtLeast(0L)
+                        val etaSeconds = if (ui.progress >= 0.08f && startedAt > 0L) ((elapsed / ui.progress) * (1f - ui.progress) / 1000f).toInt() + 1 else null
+                        androidx.compose.material3.Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                    Text(stringResource(R.string.convert_working), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                    Text("${(ui.progress * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                                com.stickerstudio.app.ui.components.BrandProgress(ui.progress, height = 10.dp)
+                                if (etaSeconds != null) {
+                                    Text(
+                                        stringResource(R.string.convert_eta, etaSeconds),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                        OutlinedButton(onClick = vm::cancel, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.cancel)) }
                     } else if (ui.resultBytes == null) {
                         Button(onClick = vm::convert, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Filled.PlayArrow, null)

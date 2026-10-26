@@ -5,6 +5,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -147,22 +149,30 @@ fun CreateScreen(
         Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.create_title), style = MaterialTheme.typography.titleLarge)
-
-        // The one big button: picture, GIF or video.
-        Card(
-            onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
-            shape = RoundedCornerShape(28.dp),
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().height(172.dp),
+        // Hero: the one big entry point (picture, GIF or video).
+        val dark = com.stickerstudio.app.ui.theme.isDarkTheme()
+        Box(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(com.stickerstudio.app.ui.theme.heroBrush()),
         ) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(20.dp), modifier = Modifier.size(60.dp)) {
-                    Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.UploadFile, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(30.dp)) }
+            Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.create_hero_title), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color.White)
+                Text(
+                    stringResource(R.string.create_hero_sub),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.82f),
+                )
+                Surface(
+                    onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
+                    shape = RoundedCornerShape(18.dp),
+                    color = if (dark) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.White,
+                    contentColor = if (dark) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
+                ) {
+                    Row(Modifier.padding(vertical = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.UploadFile, null, Modifier.size(22.dp))
+                        Text(stringResource(R.string.create_hero_cta), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 8.dp))
+                    }
                 }
-                Text(stringResource(R.string.create_pick_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 10.dp))
-                Text(stringResource(R.string.create_pick_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
@@ -232,6 +242,7 @@ private fun SourceTile(icon: ImageVector, label: Int, modifier: Modifier, onClic
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier.height(84.dp),
     ) {
         Column(Modifier.fillMaxWidth().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {

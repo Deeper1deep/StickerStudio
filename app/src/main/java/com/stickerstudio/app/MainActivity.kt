@@ -19,7 +19,7 @@ class MainActivity : AppCompatActivity() {
         val container = (application as StickerStudioApp).container
         if (savedInstanceState == null) container.updates.checkOnStartup()
         setContent {
-            val mode by container.settings.theme.collectAsState(initial = ThemeMode.SYSTEM)
+            val mode by container.settings.theme.collectAsState(initial = ThemeMode.DARK)
             val dark = when (mode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
