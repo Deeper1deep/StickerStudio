@@ -124,6 +124,8 @@
     <string name="import_pack_invalid">لا توجد ملصقات صالحة في هذا الملف. اختر حزمة بصيغة wastickers أو zip.</string>
     <string name="import_pack_skipped">تم تخطي %1$d (غير صالح لواتساب).</string>
     <string name="import_pack_title">استيراد حزمة</string>
+    <string name="import_packs_done">تم استيراد %1$d حزمة (%2$d ملصق).</string>
+    <string name="import_packs_failed">تعذر استخدام %1$d ملف.</string>
     <string name="import_progress">جارٍ معالجة %1$d من %2$d…</string>
     <string name="issue_dimensions">الملصق %1$d: المقاس يجب أن يكون 512x512 بالضبط.</string>
     <string name="issue_duration">الملصق %1$d: الحركة أطول من 10 ثوانٍ.</string>

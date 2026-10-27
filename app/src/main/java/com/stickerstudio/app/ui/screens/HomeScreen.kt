@@ -98,15 +98,19 @@ fun HomeScreen(
     var creating by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<PackEntity?>(null) }
     var deleting by remember { mutableStateOf<PackEntity?>(null) }
-    var importing by remember { mutableStateOf(false) }
-    var importResult by remember { mutableStateOf<PackImportResult?>(null) }
-    // .wastickers has no registered MIME type, so the picker must accept any file.
-    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
+    var importProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var importResults by remember { mutableStateOf<List<PackImportResult>?>(null) }
+    // .wastickers has no registered MIME type, so the picker must accept any file; several can be picked.
+    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
             scope.launch {
-                importing = true
-                importResult = PackFileImport.import(context, uri)
-                importing = false
+                val results = ArrayList<PackImportResult>()
+                for ((i, uri) in uris.withIndex()) {
+                    importProgress = (i + 1) to uris.size
+                    results += PackFileImport.import(context, uri)
+                }
+                importProgress = null
+                importResults = results
             }
         }
     }
@@ -235,19 +239,25 @@ fun HomeScreen(
             onDismiss = { deleting = null },
         )
     }
-    if (importing) BusyDialog()
-    importResult?.let { r ->
-        val message = if (r.error != null) {
-            stringResource(r.error)
-        } else {
-            stringResource(R.string.import_pack_done, r.added) +
-                if (r.skipped > 0) " " + stringResource(R.string.import_pack_skipped, r.skipped) else ""
+    importProgress?.let { BusyDialog(it) }
+    importResults?.let { results ->
+        val ok = results.filter { it.packId != null }
+        val first = results.firstOrNull()
+        val message = when {
+            results.size == 1 && first?.error != null -> stringResource(first.error)
+            results.size == 1 && first != null ->
+                stringResource(R.string.import_pack_done, first.added) +
+                    if (first.skipped > 0) " " + stringResource(R.string.import_pack_skipped, first.skipped) else ""
+            ok.isEmpty() -> stringResource(R.string.import_pack_invalid)
+            else -> stringResource(R.string.import_packs_done, ok.size, ok.sumOf { it.added }) +
+                if (results.size > ok.size) "\n" + stringResource(R.string.import_packs_failed, results.size - ok.size) else ""
         }
         MessageDialog(
             stringResource(R.string.import_pack_title), message,
             onDismiss = {
-                importResult = null
-                r.packId?.let(onOpenPack)
+                importResults = null
+                // a single imported pack opens right away
+                if (ok.size == 1) ok[0].packId?.let(onOpenPack)
             },
         )
     }

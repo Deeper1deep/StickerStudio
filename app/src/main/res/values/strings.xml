@@ -124,6 +124,8 @@
     <string name="import_pack_invalid">No usable stickers in this file. Pick a .wastickers or .zip pack.</string>
     <string name="import_pack_skipped">%1$d skipped (not valid for WhatsApp).</string>
     <string name="import_pack_title">Import a pack</string>
+    <string name="import_packs_done">%1$d packs imported (%2$d stickers).</string>
+    <string name="import_packs_failed">%1$d files could not be used.</string>
     <string name="import_progress">Converting %1$d of %2$d…</string>
     <string name="issue_dimensions">Sticker %1$d: the size must be exactly 512x512.</string>
     <string name="issue_duration">Sticker %1$d: the animation is longer than 10 seconds.</string>

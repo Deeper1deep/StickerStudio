@@ -14,6 +14,7 @@
   (title/author, emojis and order are read when present; valid WhatsApp WebP files are kept as they are,
   other pictures and non-512 static WebP are fitted into proper stickers; max 30, the rest is reported).
 - Packs are now saved as `.wastickers` (ZIP with title.txt, author.txt, tray, numbered .webp, pack.json).
+- Several files can be picked at once; each becomes its own pack, with one summary at the end.
 - `PackArchive` (pure Kotlin) + `PackArchiveTest`.
 
 ## Unreleased - fast GIF conversion
