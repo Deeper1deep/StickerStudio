@@ -6,7 +6,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
@@ -17,6 +17,7 @@ jobs:
       STICKER_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       STICKER_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       EXPECTED_CERT_SHA256: ${{ secrets.EXPECTED_CERT_SHA256 }}
+      UPDATES_REPO_TOKEN: ${{ secrets.UPDATES_REPO_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -27,7 +28,7 @@ jobs:
 
       - name: Check secrets exist and tag matches version
         run: |
-          for v in KEYSTORE_BASE64 STICKER_KEYSTORE_PASSWORD STICKER_KEY_ALIAS STICKER_KEY_PASSWORD; do
+          for v in KEYSTORE_BASE64 STICKER_KEYSTORE_PASSWORD STICKER_KEY_ALIAS STICKER_KEY_PASSWORD UPDATES_REPO_TOKEN; do
             if [ -z "${!v}" ]; then echo "::error::Secret for $v is missing. See docs/RELEASING.md"; exit 1; fi
           done
           VERSION_NAME=$(grep '^APP_VERSION_NAME=' gradle.properties | cut -d= -f2)
@@ -47,7 +48,7 @@ jobs:
         run: ./gradlew testDebugUnitTest --stacktrace
 
       - name: Signed release APK
-        run: ./gradlew assembleRelease --stacktrace -PUPDATE_REPO_OWNER=${{ github.repository_owner }} -PUPDATE_REPO_NAME=${{ github.event.repository.name }}
+        run: ./gradlew assembleRelease --stacktrace -PUPDATE_REPO_OWNER=Deeper1deep -PUPDATE_REPO_NAME=StickerStudio-Updates
 
       - name: Verify signature and prepare assets
         run: |
@@ -70,19 +71,21 @@ jobs:
           json.dump({
             "versionName": os.environ["VERSION_NAME"],
             "versionCode": int(os.environ["VERSION_CODE"]),
-            "apkUrl": "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/StickerStudio-" + os.environ["VERSION_NAME"] + ".apk",
+            "apkUrl": "https://github.com/Deeper1deep/StickerStudio-Updates/releases/download/" + os.environ["GITHUB_REF_NAME"] + "/StickerStudio-" + os.environ["VERSION_NAME"] + ".apk",
             "sha256": "$SHA",
             "sizeBytes": $SIZE,
             "applicationId": "com.stickerstudio.app",
             "publishedAt": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "changelog": "See CHANGELOG.md"
+            "changelog": "See release notes"
           }, open("dist/update.json", "w"), indent=2)
           PY
           cat dist/update.json
 
-      - name: Publish GitHub Release
+      - name: Publish public update release
         uses: softprops/action-gh-release@v2
         with:
+          repository: Deeper1deep/StickerStudio-Updates
+          token: ${{ secrets.UPDATES_REPO_TOKEN }}
           files: |
             dist/*.apk
             dist/*.sha256
