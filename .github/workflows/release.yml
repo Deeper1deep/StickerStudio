@@ -85,6 +85,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           repository: Deeper1deep/StickerStudio-Updates
+          target_commitish: main
           token: ${{ secrets.UPDATES_REPO_TOKEN }}
           files: |
             dist/*.apk
