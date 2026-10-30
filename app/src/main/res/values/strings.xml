@@ -230,6 +230,7 @@
     <string name="unsaved_title">Unsaved changes</string>
     <string name="update_available_title">Version %1$s is available</string>
     <string name="update_changelog">What\'s new</string>
+    <string name="update_channel">App updates</string>
     <string name="update_check_now">Check now</string>
     <string name="update_checking">Checking…</string>
     <string name="update_details">Details</string>
@@ -253,6 +254,8 @@
     <string name="update_later">Later</string>
     <string name="update_no_release">No release has been published yet.</string>
     <string name="update_not_configured">Updates are not configured in this build.</string>
+    <string name="update_notif_text">Version %1$s - tap to see what is new</string>
+    <string name="update_notif_title">A new version is available</string>
     <string name="update_now">Update now</string>
     <string name="update_retry">Try again</string>
     <string name="update_size_mb">Size: %1$.1f MB</string>
@@ -265,6 +268,8 @@
     <string name="wa_cancelled">Nothing was added to WhatsApp.</string>
     <string name="wa_not_installed">WhatsApp is not installed on this device.</string>
     <string name="wa_rejected">WhatsApp rejected the pack:</string>
+    <string name="whats_new_body">• Share pictures, GIFs and videos to the app from any app\n• Tap a wastickers file to import it\n• Conversion keeps running in the background with a progress notification\n• A notification when a new version is out\n• This what is new message after every update\n• New dark design, faster GIF and video conversion, multi-pack import</string>
+    <string name="whats_new_title">What is new in %1$s</string>
     <string name="whatsapp">WhatsApp</string>
     <string name="whatsapp_business">WhatsApp Business</string>
     <string name="zip_done">Pack file saved (.wastickers).</string>

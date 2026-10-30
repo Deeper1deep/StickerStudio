@@ -230,6 +230,7 @@
     <string name="unsaved_title">تغييرات غير محفوظة</string>
     <string name="update_available_title">الإصدار %1$s متاح</string>
     <string name="update_changelog">الجديد</string>
+    <string name="update_channel">تحديثات التطبيق</string>
     <string name="update_check_now">افحص الآن</string>
     <string name="update_checking">جارٍ الفحص…</string>
     <string name="update_details">التفاصيل</string>
@@ -253,6 +254,8 @@
     <string name="update_later">لاحقًا</string>
     <string name="update_no_release">لم يُنشر أي إصدار بعد.</string>
     <string name="update_not_configured">التحديثات غير مفعّلة في هذا الإصدار.</string>
+    <string name="update_notif_text">الإصدار %1$s - اضغط لمعرفة الجديد</string>
+    <string name="update_notif_title">إصدار جديد متاح</string>
     <string name="update_now">تحديث الآن</string>
     <string name="update_retry">حاول مرة أخرى</string>
     <string name="update_size_mb">الحجم: %1$.1f م.ب</string>
@@ -265,6 +268,8 @@
     <string name="wa_cancelled">لم تتم إضافة شيء إلى واتساب.</string>
     <string name="wa_not_installed">واتساب غير مثبت على هذا الجهاز.</string>
     <string name="wa_rejected">رفض واتساب الحزمة:</string>
+    <string name="whats_new_body">• مشاركة صورة أو GIF أو فيديو للتطبيق من أي تطبيق\n• فتح ملفات wastickers بالضغط عليها لاستيرادها\n• التحويل يكمل في الخلفية مع إشعار تقدم\n• إشعار عند نزول إصدار جديد\n• رسالة «ما الجديد» بعد كل تحديث\n• تصميم داكن جديد وتحويل أسرع للـ GIF والفيديو واستيراد أكثر من حزمة</string>
+    <string name="whats_new_title">ما الجديد في %1$s</string>
     <string name="whatsapp">واتساب</string>
     <string name="whatsapp_business">واتساب للأعمال</string>
     <string name="zip_done">تم حفظ ملف الحزمة (wastickers).</string>

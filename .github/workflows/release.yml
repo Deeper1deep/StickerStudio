@@ -122,6 +122,22 @@ jobs:
           echo "$SHA  StickerStudio-${VERSION_NAME}.apk" > "$APK.sha256"
           python3 - <<PY
           import json, os, datetime
+          # Release notes: the "## <version>" section of CHANGELOG.md (shown in the app's update popup).
+          notes = ""
+          try:
+              out = []
+              on = False
+              for line in open("CHANGELOG.md", encoding="utf-8").read().splitlines():
+                  if line.startswith("## "):
+                      if on:
+                          break
+                      on = line.startswith("## " + os.environ["VERSION_NAME"])
+                      continue
+                  if on:
+                      out.append(line)
+              notes = chr(10).join(out).strip()
+          except OSError:
+              pass
           json.dump({
             "versionName": os.environ["VERSION_NAME"],
             "versionCode": int(os.environ["VERSION_CODE"]),
@@ -130,7 +146,7 @@ jobs:
             "sizeBytes": $SIZE,
             "applicationId": "com.stickerstudio.app",
             "publishedAt": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "changelog": "See release notes"
+            "changelog": notes or "See release notes"
           }, open("dist/update.json", "w"), indent=2)
           PY
           cat dist/update.json

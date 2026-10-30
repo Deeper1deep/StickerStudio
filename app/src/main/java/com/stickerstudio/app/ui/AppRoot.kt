@@ -50,6 +50,8 @@ import com.stickerstudio.app.ui.screens.PackDetailScreen
 import com.stickerstudio.app.ui.screens.SettingsScreen
 import com.stickerstudio.app.ui.screens.UpdatesScreen
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 object Routes {
@@ -93,10 +95,58 @@ fun AppRoot() {
     // Telegram-style "new version" popup: once per launch, only on the main tabs.
     val appContext = androidx.compose.ui.platform.LocalContext.current
     val updates = appContext.container.updates
+    val appSettings = appContext.container.settings
+    val rootScope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // One-time notification permission (Android 13+), used for update and conversion notifications.
+    val notifLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { }
+    fun askNotificationsOnce() {
+        rootScope.launch {
+            if (android.os.Build.VERSION.SDK_INT >= 33 && !appSettings.askedNotifications.first() &&
+                androidx.core.content.ContextCompat.checkSelfPermission(appContext, android.Manifest.permission.POST_NOTIFICATIONS) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                appSettings.setAskedNotifications()
+                notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    // "What is new" message, shown once after the app was updated (never on a fresh install).
+    var whatsNew by androidx.compose.runtime.remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        val seen = appSettings.lastSeenVersionCode.first()
+        val now = com.stickerstudio.app.BuildConfig.VERSION_CODE
+        if (seen < now) {
+            val info = appContext.packageManager.getPackageInfo(appContext.packageName, 0)
+            val updatedInPlace = info.lastUpdateTime - info.firstInstallTime > 60_000L
+            if (seen > 0 || updatedInPlace) whatsNew = true else { appSettings.setLastSeenVersionCode(now); askNotificationsOnce() }
+        } else {
+            askNotificationsOnce()
+        }
+    }
+    if (whatsNew) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.whats_new_title, com.stickerstudio.app.BuildConfig.VERSION_NAME)) },
+            text = { Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) { Text(stringResource(R.string.whats_new_body)) } },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    whatsNew = false
+                    rootScope.launch {
+                        appSettings.setLastSeenVersionCode(com.stickerstudio.app.BuildConfig.VERSION_CODE)
+                        askNotificationsOnce()
+                    }
+                }) { Text(stringResource(R.string.ok)) }
+            },
+        )
+    }
     val updateState by updates.state.collectAsState()
     var updateDismissed by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     val available = updateState as? com.stickerstudio.app.update.UpdateUiState.Available
-    if (available != null && !available.skipped && !updateDismissed && showBar) {
+    if (available != null && !available.skipped && !updateDismissed && showBar && !whatsNew) {
         val m = available.manifest
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { updateDismissed = true },

@@ -10,7 +10,14 @@ import coil.decode.ImageDecoderDecoder
 import com.stickerstudio.app.data.AppDatabase
 import com.stickerstudio.app.data.PackRepository
 import com.stickerstudio.app.data.SettingsStore
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.stickerstudio.app.update.UpdateCheckWorker
 import com.stickerstudio.app.update.UpdateManager
+import java.util.concurrent.TimeUnit
 
 /** Manual dependency container (the app is small enough that a DI framework is not needed). */
 class AppContainer(app: Application) {
@@ -28,6 +35,16 @@ class StickerStudioApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        scheduleUpdateChecks()
+    }
+
+    /** Background check for a new release roughly twice a day, only with a network connection. */
+    private fun scheduleUpdateChecks() {
+        if (BuildConfig.UPDATE_REPO_OWNER.isBlank()) return
+        val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(12, TimeUnit.HOURS)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(UpdateCheckWorker.WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
     /** Coil loader that can also play animated WebP / GIF stickers. */

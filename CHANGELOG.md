@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.0.29 - share, open files, background conversion
+## 1.0.30 - share, open files, background conversion, update notices
+
+- A notification when a new version is published (checked twice a day in the background).
+- A "what is new" message after the app was updated.
+- The update popup now shows the real release notes from this file.
 
 - "Share" a picture, GIF or video from any app to Sticker Studio (one file opens the editor, several are
   added to the selected pack).
