@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - share, open files, background conversion
+## 1.0.29 - share, open files, background conversion
 
 - "Share" a picture, GIF or video from any app to Sticker Studio (one file opens the editor, several are
   added to the selected pack).
