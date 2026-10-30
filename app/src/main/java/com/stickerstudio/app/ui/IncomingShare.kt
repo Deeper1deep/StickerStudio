@@ -49,7 +49,19 @@ object IncomingShare {
         val name = displayName(context, uri)?.lowercase() ?: uri.lastPathSegment.orEmpty().lowercase()
         if (name.endsWith(".wastickers") || name.endsWith(".zip")) return true
         val type = try { context.contentResolver.getType(uri).orEmpty().lowercase() } catch (e: Exception) { "" }
-        return type.contains("wastickers") || type == "application/zip" || type == "application/x-zip-compressed"
+        if (type.contains("wastickers") || type == "application/zip" || type == "application/x-zip-compressed") return true
+        // A generic file with no useful name: a pack is a ZIP, which starts with "PK\u0003\u0004".
+        if (type == "application/octet-stream" || type.isEmpty()) {
+            return try {
+                context.contentResolver.openInputStream(uri)?.use { s ->
+                    val b = ByteArray(4)
+                    s.read(b) == 4 && b[0] == 0x50.toByte() && b[1] == 0x4B.toByte() && b[2] == 3.toByte() && b[3] == 4.toByte()
+                } ?: false
+            } catch (e: Exception) {
+                false
+            }
+        }
+        return false
     }
 
     private fun displayName(context: Context, uri: Uri): String? = try {
