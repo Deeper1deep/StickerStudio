@@ -47,6 +47,8 @@ jobs:
           for v in KEYSTORE_BASE64 STICKER_KEYSTORE_PASSWORD STICKER_KEY_ALIAS STICKER_KEY_PASSWORD UPDATES_REPO_TOKEN; do
             if [ -z "${!v}" ]; then echo "::error::Secret for $v is missing. See docs/RELEASING.md"; exit 1; fi
           done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           CURRENT_VERSION_NAME=$(grep '^APP_VERSION_NAME=' gradle.properties | cut -d= -f2)
           CURRENT_VERSION_CODE=$(grep '^APP_VERSION_CODE=' gradle.properties | cut -d= -f2)
 
