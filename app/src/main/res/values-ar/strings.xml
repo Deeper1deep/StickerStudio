@@ -38,6 +38,9 @@
     <string name="choose_whatsapp">الإضافة إلى أي تطبيق؟</string>
     <string name="clear_drawing">مسح الرسم</string>
     <string name="clear_erasing">مسح التعديلات</string>
+    <string name="convert_channel">تحويل الملصقات</string>
+    <string name="convert_done_text">اضغط لفتح التطبيق وحفظه.</string>
+    <string name="convert_done_title">الملصق جاهز</string>
     <string name="convert_eta">المتبقي حوالي %1$d ثانية</string>
     <string name="convert_working">جارٍ الضغط ليناسب واتساب…</string>
     <string name="create_animated">ملصق متحرك</string>

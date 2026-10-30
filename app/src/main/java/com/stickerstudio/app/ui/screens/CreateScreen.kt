@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import com.stickerstudio.app.sticker.MediaKind
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,6 +77,8 @@ fun CreateScreen(
     onBlankEditor: (pack: String) -> Unit,
     onAnimated: (pack: String, source: String, isVideo: Boolean) -> Unit,
     onOpenPack: (String) -> Unit,
+    incoming: List<Uri>? = null,
+    onIncomingHandled: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val repo = context.container.repository
@@ -135,6 +138,18 @@ fun CreateScreen(
                 busy = false
             }
         }
+    }
+
+    // Pictures / GIFs / videos shared to the app from elsewhere.
+    LaunchedEffect(incoming) {
+        if (!incoming.isNullOrEmpty()) {
+            handlePicked(incoming)
+            onIncomingHandled()
+        }
+    }
+    // Pre-select the first pack, so picking a file does not ask for a new pack when packs exist.
+    LaunchedEffect(packs) {
+        if (packs.isNotEmpty() && packs.none { it.id == target }) target = packs.first().id
     }
 
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(30)) { handlePicked(it) }

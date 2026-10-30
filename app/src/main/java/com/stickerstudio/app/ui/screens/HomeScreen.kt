@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +58,7 @@ import com.stickerstudio.app.ui.PackActionsController
 import com.stickerstudio.app.ui.PackActionsDialogs
 import com.stickerstudio.app.ui.WhatsAppActionButton
 import com.stickerstudio.app.ui.components.AppCard
+import com.stickerstudio.app.ui.IncomingShare
 import com.stickerstudio.app.ui.PackFileImport
 import com.stickerstudio.app.ui.PackImportResult
 import com.stickerstudio.app.ui.components.BusyDialog
@@ -101,18 +103,28 @@ fun HomeScreen(
     var importProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var importResults by remember { mutableStateOf<List<PackImportResult>?>(null) }
     // .wastickers has no registered MIME type, so the picker must accept any file; several can be picked.
-    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        if (uris.isNotEmpty()) {
-            scope.launch {
-                val results = ArrayList<PackImportResult>()
-                for ((i, uri) in uris.withIndex()) {
-                    importProgress = (i + 1) to uris.size
-                    results += PackFileImport.import(context, uri)
-                }
-                importProgress = null
-                importResults = results
+    fun runImport(uris: List<android.net.Uri>) {
+        if (uris.isEmpty()) return
+        scope.launch {
+            val results = ArrayList<PackImportResult>()
+            for ((i, uri) in uris.withIndex()) {
+                importProgress = (i + 1) to uris.size
+                results += PackFileImport.import(context, uri)
             }
+            importProgress = null
+            importResults = results
         }
+    }
+    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> runImport(uris) }
+
+    // Files shared / opened from other apps: packs are imported here, pictures go to the create section.
+    val incoming by IncomingShare.pending.collectAsState()
+    var sharedMedia by remember { mutableStateOf<List<android.net.Uri>?>(null) }
+    LaunchedEffect(incoming) {
+        val item = incoming ?: return@LaunchedEffect
+        IncomingShare.consume()
+        if (item.media.isNotEmpty()) sharedMedia = item.media
+        runImport(item.packs)
     }
 
     LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
@@ -163,6 +175,8 @@ fun HomeScreen(
                 onBlankEditor = onBlankEditor,
                 onAnimated = onAnimated,
                 onOpenPack = onOpenPack,
+                incoming = sharedMedia,
+                onIncomingHandled = { sharedMedia = null },
             )
         }
 

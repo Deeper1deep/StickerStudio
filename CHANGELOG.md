@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased - share, open files, background conversion
+
+- "Share" a picture, GIF or video from any app to Sticker Studio (one file opens the editor, several are
+  added to the selected pack).
+- Tap a `.wastickers` / `.zip` file (or share it) to import it as a pack.
+- Conversion now runs with a foreground service and a progress notification (Android 13+ asks for the
+  notification permission once), so leaving the app does not stop it; a "ready" notification appears if
+  the app is in the background when it finishes.
+- The first pack is pre-selected in the create section, so picking a file no longer asks for a new pack
+  when packs already exist.
+
 ## 1.0.28 - update test
 
 - Smaller APK: only phone architectures (arm64-v8a, armeabi-v7a) are packaged.

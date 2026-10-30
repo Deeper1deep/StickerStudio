@@ -38,6 +38,9 @@
     <string name="choose_whatsapp">Add to which app?</string>
     <string name="clear_drawing">Clear drawing</string>
     <string name="clear_erasing">Clear erasing</string>
+    <string name="convert_channel">Sticker conversion</string>
+    <string name="convert_done_text">Tap to open the app and save it.</string>
+    <string name="convert_done_title">Sticker is ready</string>
     <string name="convert_eta">About %1$d s left</string>
     <string name="convert_working">Compressing to fit WhatsApp…</string>
     <string name="create_animated">Animated sticker</string>

@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -78,6 +79,19 @@ fun AnimatedScreen(
         factory = vmFactory { AnimatedViewModel(context.applicationContext as Application, packId, source, isVideo) },
     )
     val ui by vm.ui.collectAsStateWithLifecycle()
+
+    // Progress notification while converting (Android 13+ asks once; the conversion works either way).
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    var askedNotifications by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    fun askNotifications() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && !askedNotifications &&
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            askedNotifications = true
+            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(vm::pick) }
     LaunchedEffect(ui.saved) { if (ui.saved) onClose() }
@@ -218,7 +232,7 @@ fun AnimatedScreen(
                         }
                         OutlinedButton(onClick = vm::cancel, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.cancel)) }
                     } else if (ui.resultBytes == null) {
-                        Button(onClick = vm::convert, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { askNotifications(); vm.convert() }, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Filled.PlayArrow, null)
                             Text(stringResource(R.string.anim_convert), Modifier.padding(start = 8.dp))
                         }

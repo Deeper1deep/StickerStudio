@@ -246,11 +246,15 @@ class AnimatedViewModel(
         val name = s.sourceName ?: return
         if (job?.isActive == true) return
         _ui.update { it.copy(converting = true, progress = 0f, resultBytes = null, message = null, cropMode = false) }
+        com.stickerstudio.app.ConversionService.begin(getApplication())
         job = viewModelScope.launch {
+            var succeeded = false
             try {
                 val out = AnimatedConverter.convert(file(name), s.isVideo, s.settings) { p ->
                     _ui.update { it.copy(progress = p) }
+                    com.stickerstudio.app.ConversionService.update(p)
                 }
+                succeeded = out is ConvertOutcome.Success
                 when (out) {
                     is ConvertOutcome.Success ->
                         _ui.update { it.copy(converting = false, resultBytes = out.bytes, message = R.string.anim_done) }
@@ -269,6 +273,8 @@ class AnimatedViewModel(
             } catch (e: CancellationException) {
                 _ui.update { it.copy(converting = false, progress = 0f, message = R.string.anim_cancelled) }
                 throw e
+            } finally {
+                com.stickerstudio.app.ConversionService.end(succeeded)
             }
         }
     }
