@@ -33,6 +33,9 @@ android {
         buildConfigField("String", "UPDATE_REPO_NAME", "\"$updateRepoName\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Phones only: x86 / x86_64 libraries (emulators) made the APK about twice as big.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     signingConfigs {

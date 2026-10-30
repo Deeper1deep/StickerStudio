@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.28 - update test
+
+- Smaller APK: only phone architectures (arm64-v8a, armeabi-v7a) are packaged.
+- Multi-select import, new dark design, fast GIF/MP4 decoding, .wastickers import/export.
+
 ## Unreleased - new visual design
 
 - New design system: deep-ink dark theme with violet + aqua accents (now the default; light theme kept,
