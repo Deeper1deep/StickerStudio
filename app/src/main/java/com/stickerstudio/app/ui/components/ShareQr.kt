@@ -49,7 +49,8 @@ fun buildQrWithLogo(context: Context, text: String, size: Int = 768): Bitmap {
     val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size, hints)
     val pixels = IntArray(size * size)
     for (y in 0 until size) for (x in 0 until size) pixels[y * size + x] = if (matrix[x, y]) Color.BLACK else Color.WHITE
-    val bmp = Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)   // mutable, so the logo can be drawn on it
+    bmp.setPixels(pixels, 0, size, 0, 0, size, size)
     val canvas = Canvas(bmp)
     val box = size * 0.22f
     val c = size / 2f
