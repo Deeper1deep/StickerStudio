@@ -1,8 +1,12 @@
 name: Release
 
-# Push a tag like v1.0.0 (must equal APP_VERSION_NAME in gradle.properties).
+# Automatic: every push to main (code changes, not docs/workflows) that passes the tests is released with
+# the next version number (1.0.<code+1>). Add "[skip release]" to a commit message to opt out.
+# Manual: push a tag like v1.0.0 (must equal APP_VERSION_NAME) or use "Run workflow".
 on:
   push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**', '.github/**']
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -18,8 +22,14 @@ on:
 permissions:
   contents: write
 
+# One release at a time, so two quick pushes never pick the same version number.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip release]')
     runs-on: ubuntu-latest
     env:
       KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -52,6 +62,19 @@ jobs:
           CURRENT_VERSION_NAME=$(grep '^APP_VERSION_NAME=' gradle.properties | cut -d= -f2)
           CURRENT_VERSION_CODE=$(grep '^APP_VERSION_CODE=' gradle.properties | cut -d= -f2)
 
+          if [ "$EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            # automatic release from main: next version after the last tagged one
+            git fetch --tags -q
+            if git rev-parse -q --verify "refs/tags/v$CURRENT_VERSION_NAME" >/dev/null; then
+              INPUT_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+              INPUT_VERSION_NAME="1.0.$INPUT_VERSION_CODE"
+            else
+              INPUT_VERSION_CODE="$CURRENT_VERSION_CODE"
+              INPUT_VERSION_NAME="$CURRENT_VERSION_NAME"
+            fi
+            EVENT_NAME=workflow_dispatch
+          fi
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             if [ "$GITHUB_REF" != "refs/heads/main" ]; then echo "::error::Run manual releases from main."; exit 1; fi
             VERSION_NAME="$INPUT_VERSION_NAME"
@@ -77,6 +100,7 @@ jobs:
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
               git add gradle.properties
               git commit -m "chore: release $RELEASE_TAG"
+              git pull --rebase -q origin main
               git push origin HEAD:main
             else
               echo "Using the version already prepared on main: $VERSION_NAME ($VERSION_CODE)"
@@ -136,6 +160,19 @@ jobs:
                   if on:
                       out.append(line)
               notes = chr(10).join(out).strip()
+              if not notes:
+                  # no section named like this version: use the newest one
+                  out = []
+                  seen = False
+                  for line in open("CHANGELOG.md", encoding="utf-8").read().splitlines():
+                      if line.startswith("## "):
+                          if seen:
+                              break
+                          seen = True
+                          continue
+                      if seen:
+                          out.append(line)
+                  notes = chr(10).join(out).strip()
           except OSError:
               pass
           json.dump({
