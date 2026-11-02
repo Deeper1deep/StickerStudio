@@ -70,12 +70,13 @@ fun buildQrWithLogo(context: Context, text: String, size: Int = 768): Bitmap {
 @Composable
 fun ShareQrDialog(onDismiss: () -> Unit, onSendFile: (() -> Unit)? = null) {
     val context = LocalContext.current
-    val qr by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null) {
+    // Either the finished picture or the error text, so a failure is visible instead of an endless spinner.
+    val qr by produceState<Any?>(null) {
         value = withContext(Dispatchers.Default) {
             try {
                 buildQrWithLogo(context, APP_DOWNLOAD_URL).asImageBitmap()
             } catch (e: Throwable) {
-                null
+                "${e.javaClass.simpleName}: ${e.message}"
             }
         }
     }
@@ -85,8 +86,14 @@ fun ShareQrDialog(onDismiss: () -> Unit, onSendFile: (() -> Unit)? = null) {
         text = {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val img = qr
-                if (img != null) Image(img, null, Modifier.size(240.dp))
-                else Box(Modifier.size(240.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                when (img) {
+                    is androidx.compose.ui.graphics.ImageBitmap -> Image(img, null, Modifier.size(240.dp))
+                    is String -> {
+                        Text(img, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        Text(APP_DOWNLOAD_URL, style = MaterialTheme.typography.bodySmall)
+                    }
+                    else -> Box(Modifier.size(240.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                }
                 Text(stringResource(R.string.share_qr_hint), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
                 if (onSendFile != null) {
                     Button(onClick = onSendFile, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.send_pack_file)) }
