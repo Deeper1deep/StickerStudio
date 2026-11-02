@@ -48,6 +48,8 @@
     <string name="copied_n">%1$d sticker(s) copied</string>
     <string name="copy_suffix">(copy)</string>
     <string name="copy_to">Copy to…</string>
+    <string name="crash_send">Send report</string>
+    <string name="crash_title">The app closed unexpectedly last time</string>
     <string name="create_animated">Animated sticker</string>
     <string name="create_animated_hint">Convert a GIF or video</string>
     <string name="create_animated_skipped">Animated files (GIF / video) are added one at a time; they were skipped from this batch.</string>
@@ -292,7 +294,7 @@
     <string name="wa_cancelled">Nothing was added to WhatsApp.</string>
     <string name="wa_not_installed">WhatsApp is not installed on this device.</string>
     <string name="wa_rejected">WhatsApp rejected the pack:</string>
-    <string name="whats_new_body">• QR code with the app icon to share Sticker Studio with a friend, and send a pack as a file\n• Drag stickers to reorder them\n• Select many stickers: delete, move, copy or change emoji\n• Copy or move stickers between packs, and duplicate a pack\n• Undo after deleting a sticker or a pack</string>
+    <string name="whats_new_body">• Fixes for the share window\n• A crash report screen if the app ever closes unexpectedly\n• QR with the app icon, drag to reorder, multi-select, undo</string>
     <string name="whats_new_title">What is new in %1$s</string>
     <string name="whatsapp">WhatsApp</string>
     <string name="whatsapp_business">WhatsApp Business</string>

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.32 - share dialog hardening and crash report
+
+- The QR is now built off the main thread and any failure is contained instead of closing the app.
+- If the app closes unexpectedly, the next launch shows the error with a "send report" button
+  (nothing is sent automatically).
+
 ## 1.0.31 - QR share, reorder, multi-select, undo
 
 - QR code with the app icon in the centre (pack screen and Settings) so a friend can download the app;

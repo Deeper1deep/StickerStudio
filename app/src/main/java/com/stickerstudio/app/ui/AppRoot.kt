@@ -91,6 +91,7 @@ fun AppRoot() {
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
     val showBar = current == Routes.HOME
+    com.stickerstudio.app.ui.components.CrashReportDialog()
 
     // Telegram-style "new version" popup: once per launch, only on the main tabs.
     val appContext = androidx.compose.ui.platform.LocalContext.current

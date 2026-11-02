@@ -17,7 +17,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.CircularProgressIndicator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -65,13 +70,23 @@ fun buildQrWithLogo(context: Context, text: String, size: Int = 768): Bitmap {
 @Composable
 fun ShareQrDialog(onDismiss: () -> Unit, onSendFile: (() -> Unit)? = null) {
     val context = LocalContext.current
-    val qr = remember { buildQrWithLogo(context, APP_DOWNLOAD_URL).asImageBitmap() }
+    val qr by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null) {
+        value = withContext(Dispatchers.Default) {
+            try {
+                buildQrWithLogo(context, APP_DOWNLOAD_URL).asImageBitmap()
+            } catch (e: Throwable) {
+                null
+            }
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.share_title)) },
         text = {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Image(qr, null, Modifier.size(240.dp))
+                val img = qr
+                if (img != null) Image(img, null, Modifier.size(240.dp))
+                else Box(Modifier.size(240.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 Text(stringResource(R.string.share_qr_hint), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
                 if (onSendFile != null) {
                     Button(onClick = onSendFile, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.send_pack_file)) }

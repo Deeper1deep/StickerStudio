@@ -132,7 +132,7 @@ class PackActionsController(
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 info = R.string.zip_failed
             }
             busy = false

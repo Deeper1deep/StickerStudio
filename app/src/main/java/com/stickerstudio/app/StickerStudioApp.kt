@@ -35,7 +35,27 @@ class StickerStudioApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        installCrashLog()
         scheduleUpdateChecks()
+    }
+
+    /** Keeps the last crash on disk so the next launch can show it (nothing is sent anywhere automatically). */
+    private fun installCrashLog() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            try {
+                java.io.File(filesDir, CRASH_FILE).writeText(
+                    "Sticker Studio ${BuildConfig.VERSION_NAME}\n${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.SDK_INT}\n\n" +
+                        android.util.Log.getStackTraceString(error)
+                )
+            } catch (_: Throwable) {
+            }
+            previous?.uncaughtException(thread, error)
+        }
+    }
+
+    companion object {
+        const val CRASH_FILE = "last_crash.txt"
     }
 
     /** Background check for a new release roughly twice a day, only with a network connection. */

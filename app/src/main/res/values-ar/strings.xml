@@ -48,6 +48,8 @@
     <string name="copied_n">تم نسخ %1$d استيكر</string>
     <string name="copy_suffix">(نسخة)</string>
     <string name="copy_to">نسخ إلى…</string>
+    <string name="crash_send">إرسال التقرير</string>
+    <string name="crash_title">التطبيق قفل فجأة آخر مرة</string>
     <string name="create_animated">ملصق متحرك</string>
     <string name="create_animated_hint">حوّل GIF أو فيديو</string>
     <string name="create_animated_skipped">الملفات المتحركة (GIF / فيديو) تُضاف واحدًا واحدًا، وتم تخطيها من هذه الدفعة.</string>
@@ -292,7 +294,7 @@
     <string name="wa_cancelled">لم تتم إضافة شيء إلى واتساب.</string>
     <string name="wa_not_installed">واتساب غير مثبت على هذا الجهاز.</string>
     <string name="wa_rejected">رفض واتساب الحزمة:</string>
-    <string name="whats_new_body">• كود QR بأيقونة التطبيق لمشاركة Sticker Studio مع صديق، وإرسال الحزمة كملف\n• اسحب الاستيكرات لإعادة ترتيبها\n• حدّد عدة استيكرات: حذف أو نقل أو نسخ أو تغيير الإيموجي\n• انسخ أو انقل الاستيكرات بين الحزم، وكرّر الحزمة\n• تراجع بعد حذف استيكر أو حزمة</string>
+    <string name="whats_new_body">• إصلاحات لنافذة المشاركة\n• شاشة تقرير خطأ لو التطبيق قفل فجأة\n• QR بأيقونة التطبيق، السحب للترتيب، التحديد المتعدد، التراجع</string>
     <string name="whats_new_title">ما الجديد في %1$s</string>
     <string name="whatsapp">واتساب</string>
     <string name="whatsapp_business">واتساب للأعمال</string>
