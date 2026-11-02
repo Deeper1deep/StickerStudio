@@ -196,6 +196,114 @@ class PackRepository(context: Context, db: AppDatabase) {
         }
     }
 
+    /** Applies a new order (ids from first to last). Unknown ids are ignored, missing ones keep their relative order at the end. */
+    suspend fun reorder(packId: String, orderedIds: List<String>) = withContext(Dispatchers.IO) {
+        val pack = dao.findPack(packId) ?: return@withContext
+        val current = dao.stickersOf(packId)
+        val known = current.map { it.id }.toSet()
+        val head = orderedIds.filter { it in known }.distinct()
+        val finalOrder = head + current.map { it.id }.filter { it !in head }
+        if (finalOrder == current.map { it.id }) return@withContext
+        tx {
+            finalOrder.forEachIndexed { index, id -> dao.setPosition(id, index) }
+            dao.updatePack(pack.copy(imageDataVersion = pack.imageDataVersion + 1, updatedAt = System.currentTimeMillis()))
+        }
+        refreshTray(packId)
+    }
+
+    /** Sets the same emojis on many stickers at once. */
+    suspend fun setEmojisBulk(stickerIds: Collection<String>, emojis: String) = withContext(Dispatchers.IO) {
+        val normalized = normalizeEmojis(emojis)
+        val touchedPacks = HashSet<String>()
+        tx {
+            stickerIds.forEach { id ->
+                val s = dao.findSticker(id) ?: return@forEach
+                dao.updateSticker(s.copy(emojis = normalized))
+                touchedPacks += s.packId
+            }
+            touchedPacks.forEach { pid ->
+                dao.findPack(pid)?.let {
+                    dao.updatePack(it.copy(imageDataVersion = it.imageDataVersion + 1, updatedAt = System.currentTimeMillis()))
+                }
+            }
+        }
+    }
+
+    /**
+     * Copies stickers into another pack (the image and the editable source are duplicated, so
+     * deleting one copy never affects the other). Returns how many were copied; stops at the 30 limit.
+     */
+    suspend fun copyStickersToPack(stickerIds: List<String>, targetPackId: String): Int = withContext(Dispatchers.IO) {
+        val target = dao.findPack(targetPackId) ?: throw PackRuleException(PackRuleException.Code.PACK_NOT_FOUND)
+        var count = dao.stickersOf(targetPackId).size
+        var nextPos = (dao.stickersOf(targetPackId).maxOfOrNull { it.position } ?: -1) + 1
+        var copied = 0
+        var anyAnimated = false
+        val inserts = ArrayList<StickerEntity>()
+        for (sid in stickerIds) {
+            if (count >= WhatsAppLimits.MAX_STICKERS) break
+            val s = dao.findSticker(sid) ?: continue
+            val src = File(paths.packDir(s.packId), s.fileName)
+            if (!src.exists()) continue
+            val newId = UUID.randomUUID().toString()
+            val newName = "$newId.webp"
+            src.copyTo(File(paths.packDir(targetPackId), newName), overwrite = true)
+            val newSource = s.sourceFile?.let { old ->
+                val f = paths.source(old)
+                if (f.exists()) {
+                    val ext = old.substringAfterLast('.', "")
+                    val name = if (ext.isEmpty()) UUID.randomUUID().toString() else "${UUID.randomUUID()}.$ext"
+                    f.copyTo(paths.source(name), overwrite = true)
+                    name
+                } else null
+            }
+            inserts += s.copy(
+                id = newId, packId = targetPackId, fileName = newName, position = nextPos++,
+                sourceFile = newSource, createdAt = System.currentTimeMillis(),
+            )
+            anyAnimated = anyAnimated || s.animated
+            count++
+            copied++
+        }
+        if (copied > 0) {
+            tx {
+                inserts.forEach { dao.insertSticker(it) }
+                dao.updatePack(
+                    target.copy(
+                        animated = target.animated || anyAnimated,
+                        imageDataVersion = target.imageDataVersion + 1,
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                )
+            }
+            refreshTray(targetPackId)
+        }
+        copied
+    }
+
+    /** Copy then delete the originals (only the ones that were actually copied). */
+    suspend fun moveStickersToPack(stickerIds: List<String>, targetPackId: String): Int {
+        val room = WhatsAppLimits.MAX_STICKERS - stickersOf(targetPackId).size
+        val ids = stickerIds.take(room.coerceAtLeast(0))
+        val copied = copyStickersToPack(ids, targetPackId)
+        ids.take(copied).forEach { deleteSticker(it) }
+        return copied
+    }
+
+    /** Full copy of a pack (stickers, order, emojis and editable sources) named "<name> (copy)". */
+    suspend fun duplicatePack(id: String, copySuffix: String): String? = withContext(Dispatchers.IO) {
+        val pack = dao.findPack(id) ?: return@withContext null
+        val newId = createPack("${pack.name} $copySuffix", pack.publisher)
+        val ids = dao.stickersOf(id).map { it.id }
+        copyStickersToPack(ids, newId)
+        // keep the same tray choice when possible
+        val newStickers = dao.stickersOf(newId)
+        val old = dao.stickersOf(id)
+        val idx = old.indexOfFirst { it.id == pack.trayStickerId }
+        if (idx in newStickers.indices) setTraySticker(newId, newStickers[idx].id)
+        newId
+    }
+
     suspend fun setTraySticker(packId: String, stickerId: String?) = withContext(Dispatchers.IO) {
         val pack = dao.findPack(packId) ?: return@withContext
         dao.updatePack(pack.copy(trayStickerId = stickerId))

@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -97,6 +99,34 @@ fun HomeScreen(
     val publisher by c.settings.defaultPublisher.collectAsState(initial = "")
     val actions = rememberPackActions()
 
+    val snackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    var pendingPacks by remember { mutableStateOf(setOf<String>()) }
+    val visiblePacks = packs.filter { it.id !in pendingPacks }
+    val undoLabel = stringResource(R.string.undo)
+    val copySuffix = stringResource(R.string.copy_suffix)
+    /** Hides the pack right away; it is really deleted when the Undo bar goes away. */
+    fun deleteWithUndo(p: PackEntity) {
+        pendingPacks = pendingPacks + p.id
+        scope.launch {
+            var undone = false
+            try {
+                val r = snackbar.showSnackbar(
+                    context.getString(R.string.pack_deleted, p.name),
+                    actionLabel = undoLabel, duration = androidx.compose.material3.SnackbarDuration.Short,
+                )
+                undone = r == androidx.compose.material3.SnackbarResult.ActionPerformed
+            } finally {
+                if (undone) {
+                    pendingPacks = pendingPacks - p.id
+                } else {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                        c.repository.deletePack(p.id)
+                        pendingPacks = pendingPacks - p.id
+                    }
+                }
+            }
+        }
+    }
     var creating by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<PackEntity?>(null) }
     var deleting by remember { mutableStateOf<PackEntity?>(null) }
@@ -127,6 +157,7 @@ fun HomeScreen(
         runImport(item.packs)
     }
 
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
         item(key = "header") {
             Row(
@@ -197,12 +228,12 @@ fun HomeScreen(
             }
         }
 
-        if (packs.isEmpty()) {
+        if (visiblePacks.isEmpty()) {
             item(key = "packs_empty") {
                 EmptyState(stringResource(R.string.home_empty_title), stringResource(R.string.home_empty_body))
             }
         } else {
-            items(packs, key = { it.id }) { pack ->
+            items(visiblePacks, key = { it.id }) { pack ->
                 val n = counts.firstOrNull { it.packId == pack.id }?.count ?: 0
                 PackCard(
                     pack = pack,
@@ -211,6 +242,7 @@ fun HomeScreen(
                     onOpen = { onOpenPack(pack.id) },
                     onRename = { renaming = pack },
                     onDelete = { deleting = pack },
+                    onDuplicate = { scope.launch { c.repository.duplicatePack(pack.id, copySuffix) } },
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                 )
             }
@@ -229,6 +261,8 @@ fun HomeScreen(
                 }
             }
         }
+    }
+    androidx.compose.material3.SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 
     if (creating) {
@@ -249,7 +283,7 @@ fun HomeScreen(
         ConfirmDialog(
             stringResource(R.string.delete_pack_title), stringResource(R.string.delete_pack_message, p.name),
             stringResource(R.string.delete),
-            onConfirm = { deleting = null; scope.launch { c.repository.deletePack(p.id) } },
+            onConfirm = { deleting = null; deleteWithUndo(p) },
             onDismiss = { deleting = null },
         )
     }
@@ -286,6 +320,7 @@ private fun PackCard(
     onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onDuplicate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val repo = LocalContext.current.container.repository
@@ -330,6 +365,11 @@ private fun PackCard(
                             text = { Text(stringResource(R.string.rename)) },
                             leadingIcon = { Icon(Icons.Filled.Edit, null) },
                             onClick = { menu = false; onRename() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.duplicate_pack)) },
+                            leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
+                            onClick = { menu = false; onDuplicate() },
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.delete)) },

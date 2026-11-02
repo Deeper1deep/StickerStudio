@@ -49,6 +49,8 @@ private const val CONTACT_URL = "https://wa.me/qr/BTFMWNAXQXM3L1"
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit, onOpenUpdates: () -> Unit) {
+    var showShareQr by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (showShareQr) com.stickerstudio.app.ui.components.ShareQrDialog(onDismiss = { showShareQr = false })
     val context = LocalContext.current
     val settings = context.container.settings
     val scope = rememberCoroutineScope()
@@ -100,6 +102,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenUpdates: () -> Unit) {
                     Switch(checked = auto, onCheckedChange = { scope.launch { settings.setAutoUpdateCheck(it) } })
                 }
                 OutlinedButton(onClick = onOpenUpdates, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_open_updates)) }
+                OutlinedButton(onClick = { showShareQr = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.share_app)) }
             }
 
             AppCard(

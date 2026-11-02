@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.31 - QR share, reorder, multi-select, undo
+
+- QR code with the app icon in the centre (pack screen and Settings) so a friend can download the app;
+  the pack itself is sent as a `.wastickers` file from the same dialog.
+- Drag stickers to reorder them; tap the emoji on a sticker to change it.
+- Multi-select mode: delete, change emoji, copy or move many stickers at once.
+- Copy / move stickers to another pack, and duplicate a whole pack.
+- Undo after deleting a sticker or a pack.
+
 ## 1.0.30 - share, open files, background conversion, update notices
 
 - A notification when a new version is published (checked twice a day in the background).

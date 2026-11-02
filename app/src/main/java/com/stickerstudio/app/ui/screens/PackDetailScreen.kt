@@ -85,6 +85,24 @@ import com.stickerstudio.app.ui.components.TextInputDialog
 import com.stickerstudio.app.ui.rememberPackActions
 import androidx.compose.foundation.layout.height
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
+import com.stickerstudio.app.ui.components.ShareQrDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,10 +119,48 @@ fun PackDetailScreen(
     val stickers by repo.observeStickers(packId).collectAsState(initial = emptyList<StickerEntity>())
     val actions = rememberPackActions()
 
+    val snackbar = remember { SnackbarHostState() }
+    val allPacks by repo.observePacks().collectAsState(initial = emptyList<PackEntity>())
+    var pendingDelete by remember { mutableStateOf(setOf<String>()) }
+    var order by remember(stickers) { mutableStateOf(stickers) }
+    val visible = order.filter { it.id !in pendingDelete }
+    var selectMode by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf(setOf<String>()) }
+    var pickTarget by remember { mutableStateOf<Pair<List<String>, Boolean>?>(null) }   // ids to (move?)
+    var bulkEmoji by remember { mutableStateOf(false) }
+    var showShare by remember { mutableStateOf(false) }
+    val undoLabel = stringResource(R.string.undo)
+    val ctx = context
+    fun toast(msg: String) { scope.launch { snackbar.showSnackbar(msg, duration = SnackbarDuration.Short) } }
+    fun exitSelect() { selectMode = false; selected = emptySet() }
+    /** Hides the stickers right away; they are really deleted when the "Undo" bar goes away. */
+    fun deleteWithUndo(list: List<StickerEntity>) {
+        val ids = list.map { it.id }
+        if (ids.isEmpty()) return
+        pendingDelete = pendingDelete + ids
+        scope.launch {
+            var undone = false
+            try {
+                val r = snackbar.showSnackbar(
+                    ctx.getString(R.string.stickers_deleted, ids.size),
+                    actionLabel = undoLabel, duration = SnackbarDuration.Short,
+                )
+                undone = r == SnackbarResult.ActionPerformed
+            } finally {
+                if (undone) {
+                    pendingDelete = pendingDelete - ids.toSet()
+                } else {
+                    withContext(NonCancellable) {
+                        ids.forEach { repo.deleteSticker(it) }
+                        pendingDelete = pendingDelete - ids.toSet()
+                    }
+                }
+            }
+        }
+    }
     var menuFor by remember { mutableStateOf<StickerEntity?>(null) }
     var previewing by remember { mutableStateOf<StickerEntity?>(null) }
     var emojiFor by remember { mutableStateOf<StickerEntity?>(null) }
-    var deleteFor by remember { mutableStateOf<StickerEntity?>(null) }
     var replaceId by remember { mutableStateOf<String?>(null) }
     var report by remember { mutableStateOf<ImportReport?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -144,16 +200,61 @@ fun PackDetailScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text(pack?.name ?: "", style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+                title = {
+                    Text(
+                        if (selectMode) stringResource(R.string.selected_count, selected.size) else (pack?.name ?: ""),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { if (selectMode) exitSelect() else onBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+                    }
+                },
+                actions = {
+                    if (selectMode) {
+                        TextButton(onClick = { selected = visible.map { it.id }.toSet() }) { Text(stringResource(R.string.select_all)) }
+                    } else {
+                        if (visible.isNotEmpty()) TextButton(onClick = { selectMode = true }) { Text(stringResource(R.string.select)) }
+                        TextButton(onClick = { showShare = true }) { Text(stringResource(R.string.share_pack)) }
+                    }
+                },
             )
+        },
+        bottomBar = {
+            if (selectMode) {
+                Surface(tonalElevation = 3.dp) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        val has = selected.isNotEmpty()
+                        TextButton(enabled = has, onClick = {
+                            val list = visible.filter { it.id in selected }
+                            exitSelect(); deleteWithUndo(list)
+                        }) { Text(stringResource(R.string.delete)) }
+                        TextButton(enabled = has, onClick = { bulkEmoji = true }) { Text(stringResource(R.string.emoji_selected)) }
+                        TextButton(enabled = has, onClick = { pickTarget = selected.toList() to false }) { Text(stringResource(R.string.copy_to)) }
+                        TextButton(enabled = has, onClick = { pickTarget = selected.toList() to true }) { Text(stringResource(R.string.move_to)) }
+                    }
+                }
+            }
         },
     ) { padding ->
         val p = pack
-        val freeSlots = (30 - stickers.size).coerceAtLeast(0)
+        val freeSlots = (30 - visible.size).coerceAtLeast(0)
+        val gridState = rememberLazyGridState()
+        val reorderState = rememberReorderableLazyGridState(gridState) { from, to ->
+            val list = order.toMutableList()
+            val a = list.indexOfFirst { it.id == from.key }
+            val b = list.indexOfFirst { it.id == to.key }
+            if (a >= 0 && b >= 0) {
+                list.add(b, list.removeAt(a))
+                order = list
+            }
+        }
         LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(3),
             modifier = Modifier.padding(padding).fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
@@ -161,11 +262,11 @@ fun PackDetailScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (p != null) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
+                item(key = "header", span = { GridItemSpan(maxLineSpan) }) {
                     Column {
             Row(Modifier.padding(horizontal = 0.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 StatusPill(
-                    stringResource(R.string.pack_status, stickers.size, 30),
+                    stringResource(R.string.pack_status, visible.size, 30),
                     MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 Text(p.publisher, Modifier.padding(start = 10.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -206,6 +307,14 @@ fun PackDetailScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (visible.size > 1 && !selectMode) {
+                Text(
+                    stringResource(R.string.drag_hint),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Row(Modifier.padding(horizontal = 0.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 WhatsAppActionButton(p, actions, Modifier.weight(1f))
                 OutlinedButton(onClick = { actions.exportZip(packId) }) { Text(stringResource(R.string.export_zip)) }
@@ -213,15 +322,31 @@ fun PackDetailScreen(
                     }
                 }
             }
-                items(stickers, key = { it.id }) { s ->
+                items(visible, key = { it.id }) { s ->
+                    ReorderableItem(reorderState, key = s.id) { _ ->
+                    val isSel = s.id in selected
                     Box(
                         Modifier.aspectRatio(1f).clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.surface)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
+                            .border(
+                                if (isSel) 3.dp else 1.dp,
+                                if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                RoundedCornerShape(20.dp),
+                            )
+                            .longPressDraggableHandle(
+                                enabled = !selectMode,
+                                onDragStopped = { scope.launch { repo.reorder(packId, order.map { it.id }) } },
+                            ),
                     ) {
                         StickerThumb(
                             repo.stickerFile(s),
-                            Modifier.fillMaxSize().padding(6.dp).clickable { previewing = s },
+                            Modifier.fillMaxSize().padding(6.dp).clickable {
+                                if (selectMode) {
+                                    selected = if (isSel) selected - s.id else selected + s.id
+                                } else {
+                                    previewing = s
+                                }
+                            },
                         )
                         if (s.animated) {
                             StatusPill(
@@ -232,11 +357,21 @@ fun PackDetailScreen(
                         }
                         Text(
                             s.emojis,
-                            modifier = Modifier.align(Alignment.BottomStart).padding(4.dp),
+                            modifier = Modifier.align(Alignment.BottomStart).clickable(enabled = !selectMode) { emojiFor = s }.padding(6.dp),
                             style = MaterialTheme.typography.labelMedium,
                         )
-                        IconButton(onClick = { menuFor = s }, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
-                            Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
+                        if (selectMode) {
+                            Box(
+                                Modifier.align(Alignment.TopEnd).padding(8.dp).size(24.dp).clip(CircleShape)
+                                    .background(if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (isSel) Text("✓", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelMedium)
+                            }
+                        } else {
+                            IconButton(onClick = { menuFor = s }, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
+                                Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
+                            }
                         }
                         DropdownMenu(expanded = menuFor?.id == s.id, onDismissRequest = { menuFor = null }) {
                             if (!s.animated) DropdownMenuItem(
@@ -248,11 +383,12 @@ fun PackDetailScreen(
                                 onClick = { menuFor = null; replaceId = s.id; replacePicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                             )
                             DropdownMenuItem(text = { Text(stringResource(R.string.sticker_emojis)) }, onClick = { menuFor = null; emojiFor = s })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.move_earlier)) }, onClick = { menuFor = null; scope.launch { repo.moveSticker(s.id, -1) } })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.move_later)) }, onClick = { menuFor = null; scope.launch { repo.moveSticker(s.id, 1) } })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.copy_to)) }, onClick = { menuFor = null; pickTarget = listOf(s.id) to false })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.move_to)) }, onClick = { menuFor = null; pickTarget = listOf(s.id) to true })
                             DropdownMenuItem(text = { Text(stringResource(R.string.set_tray)) }, onClick = { menuFor = null; scope.launch { repo.setTraySticker(packId, s.id) } })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.delete)) }, onClick = { menuFor = null; deleteFor = s })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.delete)) }, onClick = { menuFor = null; deleteWithUndo(listOf(s)) })
                         }
+                    }
                     }
                 }
             items(count = freeSlots, key = { "slot_$it" }) {
@@ -278,12 +414,56 @@ fun PackDetailScreen(
             onDismiss = { emojiFor = null },
         )
     }
-    deleteFor?.let { s ->
-        ConfirmDialog(
-            stringResource(R.string.delete_sticker_title), stringResource(R.string.delete_sticker_message), stringResource(R.string.delete),
-            onConfirm = { deleteFor = null; scope.launch { repo.deleteSticker(s.id) } },
-            onDismiss = { deleteFor = null },
+    pickTarget?.let { (ids, move) ->
+        val others = allPacks.filter { it.id != packId }
+        AlertDialog(
+            onDismissRequest = { pickTarget = null },
+            title = { Text(stringResource(R.string.choose_pack)) },
+            text = {
+                if (others.isEmpty()) Text(stringResource(R.string.no_other_packs))
+                else Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                    others.forEach { t ->
+                        Text(
+                            t.name,
+                            Modifier.fillMaxWidth().clickable {
+                                pickTarget = null
+                                exitSelect()
+                                scope.launch {
+                                    val n = try {
+                                        if (move) repo.moveStickersToPack(ids, t.id) else repo.copyStickersToPack(ids, t.id)
+                                    } catch (e: Exception) { 0 }
+                                    snackbar.showSnackbar(
+                                        if (n == 0) ctx.getString(R.string.target_full)
+                                        else ctx.getString(if (move) R.string.moved_n else R.string.copied_n, n),
+                                        duration = SnackbarDuration.Short,
+                                    )
+                                }
+                            }.padding(vertical = 14.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        HorizontalDivider()
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { pickTarget = null }) { Text(stringResource(R.string.cancel)) } },
         )
+    }
+    if (bulkEmoji) {
+        TextInputDialog(
+            title = stringResource(R.string.sticker_emojis),
+            label = stringResource(R.string.sticker_emojis_hint),
+            initial = "",
+            onConfirm = { text ->
+                bulkEmoji = false
+                val ids = selected.toList()
+                exitSelect()
+                scope.launch { repo.setEmojisBulk(ids, text) }
+            },
+            onDismiss = { bulkEmoji = false },
+        )
+    }
+    if (showShare) {
+        ShareQrDialog(onDismiss = { showShare = false }, onSendFile = { showShare = false; actions.sendFile(packId) })
     }
     report?.let { r ->
         val text = buildString {

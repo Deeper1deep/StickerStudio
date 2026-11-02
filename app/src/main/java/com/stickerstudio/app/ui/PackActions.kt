@@ -111,6 +111,34 @@ class PackActionsController(
         }
     }
 
+    /** Writes the pack to cache and opens the share sheet so it can be sent to a friend as a .wastickers file. */
+    fun sendFile(packId: String) {
+        scope.launch {
+            val pack = repo.findPack(packId) ?: return@launch
+            busy = true
+            try {
+                val safe = pack.name.replace(Regex("[^\\p{L}\\p{N}_-]+"), "_").trim('_').ifEmpty { "stickers" }
+                val file = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val dir = java.io.File(context.cacheDir, "shared").apply { mkdirs() }
+                    dir.listFiles()?.forEach { it.delete() }
+                    java.io.File(dir, "$safe.wastickers").also { f ->
+                        f.outputStream().use { WhatsAppIntegration.writeZip(repo, pack, it) }
+                    }
+                }
+                val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/octet-stream"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: Exception) {
+                info = R.string.zip_failed
+            }
+            busy = false
+        }
+    }
+
     fun onZipUri(uri: Uri?) {
         val pack = zipPack
         zipPack = null
