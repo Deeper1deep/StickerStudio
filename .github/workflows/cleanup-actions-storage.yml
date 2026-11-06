@@ -1,4 +1,4 @@
-name: Clean Actions storage
+name: Clean Actions artifacts
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete all existing workflow artifacts
+      - name: Delete existing workflow artifacts only
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -22,10 +22,5 @@ jobs:
             echo "Deleting artifact $artifact_id"
             gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/actions/artifacts/$artifact_id"
           done
-      - name: Delete all Actions caches
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh cache delete --all --repo "${GITHUB_REPOSITORY}" || true
       - name: Summary
-        run: echo "Old Actions artifacts and caches cleanup completed for ${GITHUB_REPOSITORY}."
+        run: echo "Actions artifacts deleted. Releases, source files, secrets, signing keys, and caches were not touched."
