@@ -7,13 +7,12 @@ on:
   pull_request:
 
 permissions:
-  contents: write   # only used to publish the test release on pushes to main
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # Every CI build gets a higher version, so the app can see and install the newest one.
       BUILD_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +29,7 @@ jobs:
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
-      # GitHub Actions artifacts are always downloaded as ZIP files. Publish a
-      # separate direct .apk asset so Android users can tap Install immediately.
+          retention-days: 1
       - name: Publish direct APK download (nightly testing build)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
@@ -74,10 +72,10 @@ jobs:
           }, open("dist/update.json", "w"), indent=2, ensure_ascii=False)
           PY
           gh release create "build-$BUILD_CODE" "$APK" dist/update.json --title "Build $VN (test, debug-signed)" --notes "$COMMIT_MSG" --latest
-          # keep only the 5 newest test builds
           gh release list --limit 100 --json tagName --jq '.[].tagName' | grep '^build-' | sort -t- -k2 -n -r | tail -n +6 | while read t; do gh release delete "$t" --cleanup-tag -y || true; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-reports
           path: app/build/reports/tests/
+          retention-days: 1
