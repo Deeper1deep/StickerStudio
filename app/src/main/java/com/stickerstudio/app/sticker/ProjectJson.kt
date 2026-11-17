@@ -42,12 +42,21 @@ object ProjectJson {
                     "size" to l.size, "bold" to l.bold, "italic" to l.italic, "font" to l.font,
                     "strokeColor" to l.strokeColor, "strokeWidth" to l.strokeWidth, "shadow" to l.shadow,
                     "shape" to l.shape.name, "x" to l.x, "y" to l.y, "scale" to l.scale, "rotation" to l.rotation,
+                    "name" to l.name, "visible" to l.visible, "locked" to l.locked, "opacity" to l.opacity,
+                    "align" to l.align, "letterSpacing" to l.letterSpacing, "lineSpacing" to l.lineSpacing,
+                    "bgEnabled" to l.bgEnabled, "bgColor" to l.bgColor,
                 )
             },
             "pen" to p.pen.map {
                 linkedMapOf<String, Any?>("color" to it.color, "width" to it.width, "points" to it.points)
             },
             "crop" to cropMap(p.crop),
+            "adjust" to linkedMapOf<String, Any?>(
+                "brightness" to p.adjust.brightness, "contrast" to p.adjust.contrast,
+                "saturation" to p.adjust.saturation, "warmth" to p.adjust.warmth,
+                "exposure" to p.adjust.exposure, "blur" to p.adjust.blur,
+                "grayscale" to p.adjust.grayscale, "sepia" to p.adjust.sepia,
+            ),
         )
     )
 
@@ -110,6 +119,15 @@ object ProjectJson {
                     shape = enumOr(m.optString("shape"), ShapeKind.CIRCLE),
                     x = m.optFloat("x", 256f), y = m.optFloat("y", 256f),
                     scale = m.optFloat("scale", 1f), rotation = m.optFloat("rotation", 0f),
+                    name = m.optString("name") ?: "",
+                    visible = m.optBool("visible", true),
+                    locked = m.optBool("locked", false),
+                    opacity = m.optFloat("opacity", 1f).coerceIn(0f, 1f),
+                    align = m.optInt("align", 1).coerceIn(0, 2),
+                    letterSpacing = m.optFloat("letterSpacing", 0f).coerceIn(0f, 1f),
+                    lineSpacing = m.optFloat("lineSpacing", 1.2f).coerceIn(0.6f, 3f),
+                    bgEnabled = m.optBool("bgEnabled", false),
+                    bgColor = m.optInt("bgColor", Colors.BLACK),
                 )
             },
             pen = root["pen"].asArray().orEmpty().mapNotNull { e ->
@@ -117,6 +135,18 @@ object ProjectJson {
                 PenStroke(m.optInt("color", Colors.BLACK), m.optFloat("width", 8f), floats(m["points"]))
             },
             crop = decodeCrop(root["crop"].asObject()),
+            adjust = root["adjust"].asObject().let { a ->
+                if (a == null) Adjust() else Adjust(
+                    brightness = a.optFloat("brightness", 0f).coerceIn(-1f, 1f),
+                    contrast = a.optFloat("contrast", 0f).coerceIn(-1f, 1f),
+                    saturation = a.optFloat("saturation", 0f).coerceIn(-1f, 1f),
+                    warmth = a.optFloat("warmth", 0f).coerceIn(-1f, 1f),
+                    exposure = a.optFloat("exposure", 0f).coerceIn(-1f, 1f),
+                    blur = a.optFloat("blur", 0f).coerceIn(0f, 1f),
+                    grayscale = a.optBool("grayscale", false),
+                    sepia = a.optBool("sepia", false),
+                )
+            },
         )
     }
 

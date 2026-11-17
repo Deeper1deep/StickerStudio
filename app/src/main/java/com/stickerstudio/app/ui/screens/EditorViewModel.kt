@@ -34,7 +34,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class Tool { CROP, IMAGE, BACKGROUND, ERASE, TEXT, SHAPES, DRAW, EFFECTS }
+enum class Tool { CROP, IMAGE, BACKGROUND, ERASE, TEXT, SHAPES, DRAW, EFFECTS, LAYERS }
 
 /** One-shot messages shown as a snackbar / dialog. [res] is a string resource id. */
 data class EditorMessage(val res: Int, val nonce: Long = System.nanoTime())
@@ -254,7 +254,9 @@ class EditorViewModel(
     fun transform(panX: Float, panY: Float, zoom: Float, rotationDeg: Float) {
         val s = _ui.value
         // Layers are moved only while the text / shapes tab is open; elsewhere the image moves.
-        val selected = if (s.tool == Tool.TEXT || s.tool == Tool.SHAPES) s.selectedLayerId else null
+        val selected = if (s.tool == Tool.TEXT || s.tool == Tool.SHAPES || s.tool == Tool.LAYERS) s.selectedLayerId else null
+        // A locked layer cannot be moved by accident.
+        if (selected != null && s.project.layers.firstOrNull { it.id == selected }?.locked == true) return
         live { p ->
             if (selected == null) {
                 val x = p.xform
@@ -341,6 +343,30 @@ class EditorViewModel(
     /** Continuous edit of one layer (sliders). */
     fun liveLayer(id: String, change: (Layer) -> Layer) =
         live { p -> p.copy(layers = p.layers.map { if (it.id == id) change(it) else it }) }
+
+    /** Moves a layer up (+1, towards the front) or down (-1, towards the back) in the drawing order. */
+    fun moveLayer(id: String, delta: Int) = apply { p ->
+        val list = p.layers.toMutableList()
+        val from = list.indexOfFirst { it.id == id }
+        val to = from + delta
+        if (from < 0 || to !in list.indices) return@apply p
+        list.add(to, list.removeAt(from))
+        p.copy(layers = list)
+    }
+
+    fun duplicateLayer(id: String) {
+        val src = _ui.value.project.layers.firstOrNull { it.id == id } ?: return
+        val copy = src.copy(id = newId(), x = src.x + 24f, y = src.y + 24f, locked = false, name = "")
+        apply { p ->
+            val i = p.layers.indexOfFirst { it.id == id }
+            p.copy(layers = p.layers.toMutableList().apply { add(i + 1, copy) })
+        }
+        selectLayer(copy.id)
+    }
+
+    fun toggleLayerVisible(id: String) = updateLayer(id) { it.copy(visible = !it.visible) }
+    fun toggleLayerLocked(id: String) = updateLayer(id) { it.copy(locked = !it.locked) }
+    fun renameLayer(id: String, name: String) = updateLayer(id) { it.copy(name = name.trim().take(40)) }
 
     fun deleteLayer(id: String) {
         apply { p -> p.copy(layers = p.layers.filterNot { it.id == id }) }

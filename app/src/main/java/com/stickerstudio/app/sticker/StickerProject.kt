@@ -65,7 +65,37 @@ data class Layer(
     val y: Float = 256f,
     val scale: Float = 1f,
     val rotation: Float = 0f,
+    /** Layer panel data: custom name ("" = automatic), visibility, lock. */
+    val name: String = "",
+    val visible: Boolean = true,
+    val locked: Boolean = false,
+    val opacity: Float = 1f,
+    /** Text only: 0 = left, 1 = centre, 2 = right. */
+    val align: Int = 1,
+    /** Text only: extra space between letters in em (ignored for Arabic so letters stay joined). */
+    val letterSpacing: Float = 0f,
+    /** Text only: line height as a multiple of the font size. */
+    val lineSpacing: Float = 1.2f,
+    val bgEnabled: Boolean = false,
+    val bgColor: Int = Colors.BLACK,
 )
+
+/**
+ * Non-destructive picture adjustments, applied when rendering, so changing them again and again
+ * never lowers quality. All values are 0 by default (= untouched picture).
+ */
+data class Adjust(
+    val brightness: Float = 0f,   // -1..1
+    val contrast: Float = 0f,     // -1..1
+    val saturation: Float = 0f,   // -1..1
+    val warmth: Float = 0f,       // -1 (cool) .. 1 (warm)
+    val exposure: Float = 0f,     // -1..1
+    val blur: Float = 0f,         // 0..1
+    val grayscale: Boolean = false,
+    val sepia: Boolean = false,
+) {
+    val isDefault: Boolean get() = this == Adjust()
+}
 
 data class StickerProject(
     val xform: Xform = Xform(),
@@ -77,6 +107,7 @@ data class StickerProject(
     val layers: List<Layer> = emptyList(),
     val pen: List<PenStroke> = emptyList(),
     val crop: CropRect = CropRect(),
+    val adjust: Adjust = Adjust(),
 )
 
 /** Settings of an animated sticker (GIF / video source). */

@@ -36,6 +36,16 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -90,6 +100,10 @@ import com.stickerstudio.app.container
 import com.stickerstudio.app.data.PackEntity
 import com.stickerstudio.app.data.PackRepository
 import com.stickerstudio.app.core.WhatsAppLimits
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import com.stickerstudio.app.sticker.Adjust
 import com.stickerstudio.app.sticker.Layer
 import com.stickerstudio.app.sticker.LayerKind
 import com.stickerstudio.app.sticker.MaskKind
@@ -358,6 +372,7 @@ private fun toolVisual(tool: Tool): Pair<ImageVector, Int> = when (tool) {
     Tool.SHAPES -> Icons.Filled.Category to R.string.tool_shapes
     Tool.DRAW -> Icons.Filled.Brush to R.string.tool_draw
     Tool.EFFECTS -> Icons.Filled.AutoAwesome to R.string.tool_effects
+    Tool.LAYERS -> Icons.Filled.Layers to R.string.tool_layers
 }
 
 @Composable
@@ -371,6 +386,7 @@ private fun ToolPanel(vm: EditorViewModel, ui: EditorUi) {
         Tool.SHAPES -> ShapesPanel(vm, ui)
         Tool.DRAW -> DrawPanel(vm, ui)
         Tool.EFFECTS -> EffectsPanel(vm, ui)
+        Tool.LAYERS -> LayersPanel(vm, ui)
     }
 }
 
@@ -555,6 +571,17 @@ private fun TextPanel(vm: EditorViewModel, ui: EditorUi) {
             FilterChip(selected = selected.bold, onClick = { vm.updateLayer(id) { it.copy(bold = !it.bold) } }, label = { Text(stringResource(R.string.bold)) })
             FilterChip(selected = selected.italic, onClick = { vm.updateLayer(id) { it.copy(italic = !it.italic) } }, label = { Text(stringResource(R.string.italic)) })
         }
+        LabeledSlider(stringResource(R.string.opacity), selected.opacity, 0.1f..1f, { v -> vm.liveLayer(id) { it.copy(opacity = v) } }, vm::endGesture)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val alignNames = listOf(R.string.align_left, R.string.align_center, R.string.align_right)
+            alignNames.forEachIndexed { i, name ->
+                FilterChip(selected = selected.align == i, onClick = { vm.updateLayer(id) { it.copy(align = i) } }, label = { Text(stringResource(name)) })
+            }
+        }
+        LabeledSlider(stringResource(R.string.letter_spacing), selected.letterSpacing, 0f..0.5f, { v -> vm.liveLayer(id) { it.copy(letterSpacing = v) } }, vm::endGesture)
+        LabeledSlider(stringResource(R.string.line_spacing), selected.lineSpacing, 0.8f..2f, { v -> vm.liveLayer(id) { it.copy(lineSpacing = v) } }, vm::endGesture)
+        SwitchRow(stringResource(R.string.text_background), selected.bgEnabled) { on -> vm.updateLayer(id) { it.copy(bgEnabled = on) } }
+        if (selected.bgEnabled) ColorPalette(selected.bgColor, { c -> vm.updateLayer(id) { it.copy(bgColor = c) } })
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val names = listOf(R.string.font_sans, R.string.font_serif, R.string.font_mono, R.string.font_script)
             items(names.indices.toList()) { i ->
@@ -614,6 +641,7 @@ private fun ShapesPanel(vm: EditorViewModel, ui: EditorUi) {
             ColorPalette(selected.strokeColor, { c -> vm.updateLayer(id) { it.copy(strokeColor = c) } })
         }
         SwitchRow(stringResource(R.string.shadow), selected.shadow) { on -> vm.updateLayer(id) { it.copy(shadow = on) } }
+        LabeledSlider(stringResource(R.string.opacity), selected.opacity, 0.1f..1f, { v -> vm.liveLayer(id) { it.copy(opacity = v) } }, vm::endGesture)
         OutlinedButton(onClick = { vm.deleteLayer(id) }) { Text(stringResource(R.string.delete_layer)) }
     }
 }
@@ -637,6 +665,101 @@ private fun EffectsPanel(vm: EditorViewModel, ui: EditorUi) {
         LabeledSlider(stringResource(R.string.border_width), o.width, 2f..30f, { v -> vm.live { it.copy(outline = it.outline.copy(width = v)) } }, vm::endGesture)
     }
     SwitchRow(stringResource(R.string.shadow), ui.project.shadow) { on -> vm.apply { it.copy(shadow = on) } }
+
+    val adj = ui.project.adjust
+    Text(stringResource(R.string.adjust_title), style = MaterialTheme.typography.titleSmall)
+    LabeledSlider(stringResource(R.string.adjust_brightness), adj.brightness, -1f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(brightness = v)) } }, vm::endGesture)
+    LabeledSlider(stringResource(R.string.adjust_contrast), adj.contrast, -1f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(contrast = v)) } }, vm::endGesture)
+    LabeledSlider(stringResource(R.string.adjust_saturation), adj.saturation, -1f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(saturation = v)) } }, vm::endGesture)
+    LabeledSlider(stringResource(R.string.adjust_warmth), adj.warmth, -1f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(warmth = v)) } }, vm::endGesture)
+    LabeledSlider(stringResource(R.string.adjust_exposure), adj.exposure, -1f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(exposure = v)) } }, vm::endGesture)
+    LabeledSlider(stringResource(R.string.adjust_blur), adj.blur, 0f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(blur = v)) } }, vm::endGesture)
+    SwitchRow(stringResource(R.string.adjust_grayscale), adj.grayscale) { on -> vm.apply { it.copy(adjust = it.adjust.copy(grayscale = on)) } }
+    SwitchRow(stringResource(R.string.adjust_sepia), adj.sepia) { on -> vm.apply { it.copy(adjust = it.adjust.copy(sepia = on)) } }
+    OutlinedButton(onClick = { vm.apply { it.copy(adjust = Adjust()) } }, enabled = !adj.isDefault) { Text(stringResource(R.string.adjust_reset)) }
+}
+
+@Composable
+private fun LayersPanel(vm: EditorViewModel, ui: EditorUi) {
+    val layers = ui.project.layers
+    var renaming by remember { mutableStateOf<Layer?>(null) }
+    if (layers.isEmpty()) {
+        Hint(stringResource(R.string.layers_empty))
+        return
+    }
+    Hint(stringResource(R.string.layers_hint))
+    // Front-most layer first, like in other design apps.
+    layers.asReversed().forEach { layer ->
+        val selected = layer.id == ui.selectedLayerId
+        var menu by remember(layer.id) { mutableStateOf(false) }
+        Surface(
+            color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(14.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { vm.toggleLayerVisible(layer.id) }, modifier = Modifier.size(38.dp)) {
+                    Icon(
+                        if (layer.visible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        stringResource(if (layer.visible) R.string.layer_hide else R.string.layer_show),
+                    )
+                }
+                IconButton(onClick = { vm.toggleLayerLocked(layer.id) }, modifier = Modifier.size(38.dp)) {
+                    Icon(
+                        if (layer.locked) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                        stringResource(if (layer.locked) R.string.layer_unlock else R.string.layer_lock),
+                    )
+                }
+                Text(
+                    layerTitle(layer),
+                    modifier = Modifier.weight(1f).clickable { vm.selectLayer(layer.id) }.padding(horizontal = 6.dp, vertical = 10.dp),
+                    maxLines = 1,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                IconButton(onClick = { vm.moveLayer(layer.id, +1) }, modifier = Modifier.size(34.dp)) {
+                    Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.layer_forward))
+                }
+                IconButton(onClick = { vm.moveLayer(layer.id, -1) }, modifier = Modifier.size(34.dp)) {
+                    Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.layer_backward))
+                }
+                Box {
+                    IconButton(onClick = { menu = true }, modifier = Modifier.size(34.dp)) {
+                        Icon(Icons.Filled.Edit, stringResource(R.string.more))
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.rename_layer)) },
+                            onClick = { menu = false; renaming = layer },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.duplicate_layer)) },
+                            leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
+                            onClick = { menu = false; vm.duplicateLayer(layer.id) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete_layer)) },
+                            leadingIcon = { Icon(Icons.Filled.Delete, null) },
+                            onClick = { menu = false; vm.deleteLayer(layer.id) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+    renaming?.let { l ->
+        TextInputDialog(
+            title = stringResource(R.string.rename_layer),
+            label = stringResource(R.string.layer_name),
+            initial = l.name,
+            onConfirm = { vm.renameLayer(l.id, it); renaming = null },
+            onDismiss = { renaming = null },
+        )
+    }
+}
+
+private fun layerTitle(l: Layer): String = when {
+    l.name.isNotBlank() -> l.name
+    l.kind == LayerKind.TEXT -> l.text.replace('\n', ' ').take(24).ifBlank { "T" }
+    else -> shapeGlyph(l.shape)
 }
 
 // ---------------------------------------------------------------------------------------

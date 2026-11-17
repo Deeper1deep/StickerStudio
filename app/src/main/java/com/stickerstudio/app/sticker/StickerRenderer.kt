@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapShader
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
@@ -50,11 +52,16 @@ object StickerRenderer {
         }
 
         for (stroke in project.pen) drawPen(canvas, stroke, k)
+        val bounds = RectF(0f, 0f, outSize.toFloat(), outSize.toFloat())
         for (layer in project.layers) {
+            if (!layer.visible) continue
+            val faded = layer.opacity < 0.999f
+            if (faded) canvas.saveLayerAlpha(bounds, (layer.opacity.coerceIn(0f, 1f) * 255f).roundToInt())
             when (layer.kind) {
                 LayerKind.TEXT -> drawText(canvas, layer, k)
                 LayerKind.SHAPE -> drawShape(canvas, layer, k)
             }
+            if (faded) canvas.restore()
         }
 
         return compose(content, project, outSize, k)
@@ -87,7 +94,7 @@ object StickerRenderer {
     }
 
     private fun renderBaseCropped(p: StickerProject, src: Bitmap, size: Int, k: Float): Bitmap {
-        val layer = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        var layer = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(layer)
 
         val fit = min(SPACE / src.width, SPACE / src.height)
@@ -104,9 +111,19 @@ object StickerRenderer {
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         paint.alpha = (p.opacity.coerceIn(0f, 1f) * 255f).roundToInt()
+        AdjustMath.matrix(p.adjust)?.let { paint.colorFilter = ColorMatrixColorFilter(ColorMatrix(it)) }
         c.drawBitmap(src, m, paint)
 
         if (p.erase.isNotEmpty()) applyErase(layer, c, p.erase, k)
+
+        // Blur is applied to the picture itself (after erasing, before the mask), at render time only.
+        var maskCanvas = c
+        if (p.adjust.blur > 0.01f) {
+            val blurred = softBlur(layer, AdjustMath.blurDivisor(p.adjust))
+            layer.recycle()
+            layer = blurred
+            maskCanvas = Canvas(layer)
+        }
 
         if (p.mask != MaskKind.NONE) {
             val s = size.toFloat()
@@ -118,9 +135,20 @@ object StickerRenderer {
             }
             val maskPaint = Paint(Paint.ANTI_ALIAS_FLAG)
             maskPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-            c.drawPath(path, maskPaint)
+            maskCanvas.drawPath(path, maskPaint)
         }
         return layer
+    }
+
+    /** Cheap, smooth blur: shrink by [divisor] then scale back up with filtering. */
+    private fun softBlur(src: Bitmap, divisor: Float): Bitmap {
+        val w = max(1, (src.width / divisor).roundToInt())
+        val h = max(1, (src.height / divisor).roundToInt())
+        val small = Bitmap.createScaledBitmap(src, w, h, true)
+        val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
+        Canvas(out).drawBitmap(small, null, RectF(0f, 0f, src.width.toFloat(), src.height.toFloat()), Paint(Paint.FILTER_BITMAP_FLAG))
+        if (small !== src) small.recycle()
+        return out
     }
 
     /** Eraser clears pixels; "restore" paints the original (pre-erase) pixels back. */
@@ -176,6 +204,8 @@ object StickerRenderer {
         drawStroke(c, s.points, k, paint)
     }
 
+    private fun hasArabic(text: String): Boolean = text.any { it.code in 0x0600..0x06FF || it.code in 0x0750..0x077F || it.code in 0xFB50..0xFEFF }
+
     private fun drawText(c: Canvas, l: Layer, k: Float) {
         if (l.text.isBlank()) return
         val lines = l.text.split('\n')
@@ -186,19 +216,28 @@ object StickerRenderer {
             else -> Typeface.NORMAL
         }
         val typeface = Typeface.create(FONT_FAMILIES[l.font.coerceIn(0, FONT_FAMILIES.size - 1)], style)
+        // Letter spacing would break the joining of Arabic letters, so it only applies to other scripts.
+        val spacing = if (hasArabic(l.text)) 0f else l.letterSpacing
+        val align = when (l.align) {
+            0 -> Paint.Align.LEFT
+            2 -> Paint.Align.RIGHT
+            else -> Paint.Align.CENTER
+        }
 
         val fill = Paint(Paint.ANTI_ALIAS_FLAG)
         fill.typeface = typeface
         fill.textSize = l.size
         fill.color = l.color
-        fill.textAlign = Paint.Align.CENTER
+        fill.textAlign = align
+        fill.letterSpacing = spacing
 
         var outline: Paint? = null
         if (l.strokeWidth > 0f) {
             outline = Paint(Paint.ANTI_ALIAS_FLAG)
             outline.typeface = typeface
             outline.textSize = l.size
-            outline.textAlign = Paint.Align.CENTER
+            outline.textAlign = align
+            outline.letterSpacing = spacing
             outline.style = Paint.Style.STROKE
             outline.strokeJoin = Paint.Join.ROUND
             outline.strokeWidth = l.strokeWidth * 2f
@@ -216,12 +255,30 @@ object StickerRenderer {
         c.scale(l.scale, l.scale)
 
         val fm = fill.fontMetrics
-        val lineHeight = l.size * 1.2f
+        val lineHeight = l.size * l.lineSpacing.coerceIn(0.6f, 3f)
         val baseline = -(fm.ascent + fm.descent) / 2f
+        val widest = lines.maxOf { fill.measureText(it) }
+        // x where each line starts, depending on alignment (the block itself stays centred on the layer)
+        val anchorX = when (l.align) {
+            0 -> -widest / 2f
+            2 -> widest / 2f
+            else -> 0f
+        }
+
+        if (l.bgEnabled) {
+            val pad = l.size * 0.25f
+            val halfH = lines.size * lineHeight / 2f
+            val bg = Paint(Paint.ANTI_ALIAS_FLAG)
+            bg.color = l.bgColor
+            c.drawRoundRect(
+                RectF(-widest / 2f - pad, -halfH - pad * 0.3f, widest / 2f + pad, halfH + pad * 0.3f),
+                pad, pad, bg,
+            )
+        }
         lines.forEachIndexed { i, line ->
             val y = (i - (lines.size - 1) / 2f) * lineHeight + baseline
-            if (outline != null) c.drawText(line, 0f, y, outline)
-            c.drawText(line, 0f, y, fill)
+            if (outline != null) c.drawText(line, anchorX, y, outline)
+            c.drawText(line, anchorX, y, fill)
         }
         c.restore()
     }
