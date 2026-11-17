@@ -360,7 +360,7 @@ class AnimatedViewModel(
             withContext(Dispatchers.Default) {
                 AnimatedConverter.open(file(name), isVideo).use { src ->
                     val project = AnimatedConverter.projectFor(src, settings)
-                    val missing = list.map { it.sourceMs }.distinct().filter { it !in thumbCache }.sorted()
+                    val missing = list.map { it.sourceMs }.distinct().filter { !thumbCache.containsKey(it) }.sorted()
                     var done = 0
                     for (ms in missing) {
                         ensureActive()
