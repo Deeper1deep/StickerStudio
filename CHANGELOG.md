@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.37 - animated editor: frame timeline
+
+- **Edit frames** in the GIF / video editor: a strip of frames where you can delete, duplicate and
+  reorder frames, set how long each frame lasts, speed the whole animation up or down, and undo / redo.
+  The animation can never exceed 10 s; at least 2 frames always remain.
+- The timeline only stores which moment of the clip each frame shows, so long clips are not loaded
+  into memory; the export keeps your order and per-frame timing.
+- Animated stickers can be re-opened from the pack (Edit): crop, caption and the edited timeline come back.
+
 ## 1.0.36 - static editor: layers panel, text options, picture adjustments
 
 - New **Layers** tab: show/hide, lock, reorder (front/back), duplicate, rename and delete layers.

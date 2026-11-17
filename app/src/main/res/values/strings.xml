@@ -332,7 +332,7 @@
     <string name="wa_cancelled">Nothing was added to WhatsApp.</string>
     <string name="wa_not_installed">WhatsApp is not installed on this device.</string>
     <string name="wa_rejected">WhatsApp rejected the pack:</string>
-    <string name="whats_new_body">• New Layers tab in the editor: hide, lock, reorder, duplicate, rename\n• Text: opacity, alignment, letter and line spacing, background\n• Picture adjustments: brightness, contrast, saturation, warmth, exposure, blur, B&amp;W, sepia</string>
+    <string name="whats_new_body">• Animated editor: frame strip to delete, duplicate and reorder frames, set each frame length, speed, undo/redo\n• Edit an animated sticker again from the pack\n• Layers tab, text options and picture adjustments in the static editor</string>
     <string name="whats_new_title">What is new in %1$s</string>
     <string name="whatsapp">WhatsApp</string>
     <string name="whatsapp_business">WhatsApp Business</string>
