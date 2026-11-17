@@ -201,6 +201,20 @@ object AnimatedConverter {
         return frameDuration to max(2, (totalMs / frameDuration).toInt())
     }
 
+    /**
+     * The frames to encode for [fps]: the hand-edited timeline when there is one (thinned out for the
+     * lower-fps retries), otherwise even steps from the start / length / fps settings.
+     */
+    fun entries(src: FrameSource, settings: AnimatedSettings, fps: Int): List<TimelineFrame> {
+        val manual = settings.frames
+        if (manual != null && manual.size >= FramePlan.MIN_FRAMES) {
+            val clamped = FramePlan.clampTotal(manual, FramePlan.MAX_TOTAL_MS)
+            return if (fps < settings.fps) FramePlan.thin(clamped, (1000f / fps).roundToInt()) else clamped
+        }
+        val (frameDuration, count) = plan(src, settings, fps)
+        return FramePlan.uniform(settings.startMs, frameDuration, count)
+    }
+
     /** First attempt whose predicted size fits (about 90% of the limit); the last one if none does. */
     private suspend fun estimateStart(
         src: FrameSource,
@@ -208,14 +222,15 @@ object AnimatedConverter {
         settings: AnimatedSettings,
         attempts: List<Attempt>,
     ): Int {
-        val (frameDuration, count) = plan(src, settings, settings.fps)
+        val base = entries(src, settings, settings.fps)
+        val count = base.size
         val n = min(SAMPLES, count)
         val rendered = ArrayList<Bitmap>(n)
         try {
             for (k in 0 until n) {
                 currentCoroutineContext().ensureActive()
                 val i = if (n == 1) 0 else k * (count - 1) / (n - 1)
-                val raw = src.frameAt(settings.startMs + i.toLong() * frameDuration) ?: continue
+                val raw = src.frameAt(base[i].sourceMs) ?: continue
                 rendered += StickerRenderer.render(project, raw)
                 raw.recycle()
             }
@@ -223,7 +238,7 @@ object AnimatedConverter {
             val budget = WhatsAppLimits.MAX_ANIMATED_BYTES * 0.9
             for ((index, attempt) in attempts.withIndex()) {
                 val perFrame = rendered.sumOf { StickerEncoder.compress(it, attempt.quality).size.toLong() } / rendered.size
-                val frames = plan(src, settings, attempt.fps).second
+                val frames = entries(src, settings, attempt.fps).size
                 if (perFrame * frames + 1024 <= budget) return index
             }
             return attempts.size - 1
@@ -239,14 +254,17 @@ object AnimatedConverter {
         attempt: Attempt,
         onProgress: (Float) -> Unit,
     ): ByteArray {
-        val (frameDuration, frameCount) = plan(src, settings, attempt.fps)
+        val entries = entries(src, settings, attempt.fps)
+        val frameCount = entries.size
 
         val frames = ArrayList<AnimatedWebpMuxer.Frame>(frameCount)
         var previous: ByteArray? = null
+        var previousTime = Long.MIN_VALUE
         for (i in 0 until frameCount) {
             currentCoroutineContext().ensureActive()
-            val time = settings.startMs + i.toLong() * frameDuration
-            val raw = src.frameAt(time)
+            val time = entries[i].sourceMs
+            // A duplicated frame is the same picture again: reuse the compressed data.
+            val raw = if (time == previousTime && previous != null) null else src.frameAt(time)
             val data: ByteArray = if (raw == null) {
                 previous ?: throw IOException("No frame at $time ms")
             } else {
@@ -257,7 +275,8 @@ object AnimatedConverter {
                 bytes
             }
             previous = data
-            frames += AnimatedWebpMuxer.Frame(data, frameDuration)
+            previousTime = time
+            frames += AnimatedWebpMuxer.Frame(data, entries[i].durationMs.coerceAtLeast(WhatsAppLimits.MIN_FRAME_DURATION_MS))
             onProgress((i + 1).toFloat() / frameCount)
         }
         return AnimatedWebpMuxer.mux(frames)

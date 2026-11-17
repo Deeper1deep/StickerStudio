@@ -127,6 +127,16 @@
     <string name="font_sans">Sans</string>
     <string name="font_script">Script</string>
     <string name="font_serif">Serif</string>
+    <string name="frame_delete">Delete</string>
+    <string name="frame_duplicate">Duplicate</string>
+    <string name="frame_earlier">Earlier</string>
+    <string name="frame_later">Later</string>
+    <string name="frame_length">Frame length: %1$d ms</string>
+    <string name="frames_edit">Edit frames</string>
+    <string name="frames_info">%1$d frames · %2$.1f s</string>
+    <string name="frames_limit">The animation cannot be longer than 10 seconds.</string>
+    <string name="frames_reset">Reset frames</string>
+    <string name="frames_speed">Speed ×%1$.1f</string>
     <string name="hint_draw">Draw with your finger.</string>
     <string name="hint_erase">Paint over the area to erase or restore it.</string>
     <string name="hint_gestures">Drag to move, pinch to zoom and rotate the picture.</string>

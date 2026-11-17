@@ -19,7 +19,13 @@ import com.stickerstudio.app.sticker.StickerRenderer
 import com.stickerstudio.app.ui.StickerImport
 import com.stickerstudio.app.ui.components.CropPreset
 import java.io.File
+import com.stickerstudio.app.core.WhatsAppLimits
+import com.stickerstudio.app.sticker.FramePlan
+import com.stickerstudio.app.sticker.TimelineFrame
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
+import kotlin.math.roundToInt
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,6 +58,13 @@ data class AnimatedUi(
     val message: Int? = null,
     val saved: Boolean = false,
     val loading: Boolean = false,
+    /** Per-frame lengths of [frames] when a hand-edited timeline is playing (empty = even [frameMs]). */
+    val frameDurations: List<Long> = emptyList(),
+    /** Small pictures by source time, for the timeline strip. */
+    val thumbs: Map<Long, Bitmap> = emptyMap(),
+    val selectedFrame: Int = 0,
+    val canUndoFrames: Boolean = false,
+    val canRedoFrames: Boolean = false,
 )
 
 class AnimatedViewModel(
@@ -59,6 +72,7 @@ class AnimatedViewModel(
     private val packId: String,
     initialSource: String,
     initialIsVideo: Boolean,
+    private val stickerId: String = "",
 ) : AndroidViewModel(app) {
 
     private val repo = app.container.repository
@@ -67,10 +81,22 @@ class AnimatedViewModel(
     private var job: Job? = null
     private var previewJob: Job? = null
 
+    // Timeline editing: pictures are cached by source time, so reordering never re-decodes the clip.
+    private val thumbCache = ConcurrentHashMap<Long, Bitmap>()
+    private var cacheKey: Triple<CropRect, Boolean, String>? = null
+    private val frameUndo = ArrayDeque<List<TimelineFrame>?>()
+    private val frameRedo = ArrayDeque<List<TimelineFrame>?>()
+    private var durationBaseline: List<TimelineFrame>? = null
+
     private fun file(name: String): File = repo.paths.source(name)
 
     init {
-        if (initialSource.isNotEmpty()) viewModelScope.launch { load(initialSource, initialIsVideo) }
+        if (initialSource.isNotEmpty()) viewModelScope.launch {
+            // Re-opening a saved animated sticker brings back its crop, caption and edited timeline.
+            val restored = if (stickerId.isEmpty()) null else
+                repo.findSticker(stickerId)?.projectJson?.let { ProjectJson.decodeAnimated(it) }
+            load(initialSource, initialIsVideo, restored)
+        }
     }
 
     /** Copies a picked GIF / video into app storage and opens it. */
@@ -99,7 +125,7 @@ class AnimatedViewModel(
         }
     }
 
-    private suspend fun load(name: String, isVideo: Boolean) {
+    private suspend fun load(name: String, isVideo: Boolean, restored: AnimatedSettings? = null) {
         _ui.update { it.copy(loading = true, message = null) }
         val info = withContext(Dispatchers.IO) {
             try {
@@ -118,7 +144,7 @@ class AnimatedViewModel(
             it.copy(
                 loading = false, sourceName = name, isVideo = isVideo, durationMs = info.first,
                 sourceW = info.second, sourceH = info.third,
-                settings = AnimatedSettings(startMs = 0, durationMs = limit),   // the whole clip (WhatsApp allows at most 10 s)
+                settings = restored ?: AnimatedSettings(startMs = 0, durationMs = limit),   // the whole clip (WhatsApp allows at most 10 s)
                 resultBytes = null,
             )
         }
@@ -126,8 +152,111 @@ class AnimatedViewModel(
     }
 
     fun change(block: (AnimatedSettings) -> AnimatedSettings) {
-        _ui.update { it.copy(settings = block(it.settings), resultBytes = null, message = null) }
+        val old = _ui.value.settings
+        var new = block(old)
+        // Changing the start, length or speed rebuilds the frames, so a hand-edited timeline is dropped.
+        if (new.frames != null && (new.startMs != old.startMs || new.durationMs != old.durationMs || new.fps != old.fps)) {
+            new = new.copy(frames = null)
+            frameUndo.clear(); frameRedo.clear()
+        }
+        _ui.update {
+            it.copy(
+                settings = new, resultBytes = null, message = null,
+                canUndoFrames = frameUndo.isNotEmpty(), canRedoFrames = frameRedo.isNotEmpty(),
+            )
+        }
         refreshPreview()
+    }
+
+    // ------------------------------------------------------------------ timeline (frames)
+
+    /** Turns the current even-step settings into an editable list of frames. */
+    fun startFrameEdit() {
+        val s = _ui.value
+        if (s.settings.frames != null || s.sourceName == null) return
+        val fd = (1000f / s.settings.fps).roundToInt().coerceAtLeast(WhatsAppLimits.MIN_FRAME_DURATION_MS)
+        val total = minOf(s.settings.durationMs, FramePlan.MAX_TOTAL_MS.toLong(), max(s.durationMs - s.settings.startMs, fd * 2L))
+        setFrames(FramePlan.uniform(s.settings.startMs, fd, max(2, (total / fd).toInt())), selected = 0)
+    }
+
+    private fun setFrames(new: List<TimelineFrame>?, selected: Int = _ui.value.selectedFrame, record: Boolean = true) {
+        val cur = _ui.value.settings.frames
+        if (new == cur) return
+        if (record) {
+            frameUndo.addLast(cur)
+            while (frameUndo.size > 50) frameUndo.removeFirst()
+            frameRedo.clear()
+        }
+        _ui.update {
+            it.copy(
+                settings = it.settings.copy(frames = new),
+                selectedFrame = selected.coerceIn(0, max(0, (new?.size ?: 1) - 1)),
+                resultBytes = null, message = null,
+                canUndoFrames = frameUndo.isNotEmpty(), canRedoFrames = frameRedo.isNotEmpty(),
+            )
+        }
+        refreshPreview()
+    }
+
+    fun selectFrame(index: Int) = _ui.update { it.copy(selectedFrame = index) }
+
+    private fun frames() = _ui.value.settings.frames
+
+    fun deleteFrame() {
+        val list = frames() ?: return
+        val i = _ui.value.selectedFrame
+        setFrames(FramePlan.delete(list, i), selected = i)
+    }
+
+    fun duplicateFrame() {
+        val list = frames() ?: return
+        val i = _ui.value.selectedFrame
+        val next = FramePlan.duplicate(list, i)
+        if (next === list) _ui.update { it.copy(message = R.string.frames_limit) } else setFrames(next, selected = i + 1)
+    }
+
+    fun moveFrame(delta: Int) {
+        val list = frames() ?: return
+        val i = _ui.value.selectedFrame
+        setFrames(FramePlan.move(list, i, delta), selected = (i + delta).coerceIn(0, list.size - 1))
+    }
+
+    /** While a slider moves: [commit] = false changes the length live; one undo step is recorded when it ends. */
+    fun setFrameDuration(ms: Int, commit: Boolean) {
+        val list = frames() ?: return
+        val i = _ui.value.selectedFrame
+        if (!commit && durationBaseline == null) durationBaseline = list
+        setFrames(FramePlan.withDuration(list, i, ms), record = commit)
+    }
+
+    fun commitFrameDuration() {
+        val base = durationBaseline ?: return
+        durationBaseline = null
+        if (base != frames()) {
+            frameUndo.addLast(base)
+            frameRedo.clear()
+            _ui.update { it.copy(canUndoFrames = true, canRedoFrames = false) }
+        }
+    }
+
+    fun setSpeed(factor: Float) {
+        val list = frames() ?: return
+        setFrames(FramePlan.scaleSpeed(list, factor))
+    }
+
+    /** Back to even steps built from the start / length / fps settings. */
+    fun resetFrames() = setFrames(null, selected = 0)
+
+    fun undoFrames() {
+        if (frameUndo.isEmpty()) return
+        frameRedo.addLast(frames())
+        setFrames(frameUndo.removeLast(), record = false)
+    }
+
+    fun redoFrames() {
+        if (frameRedo.isEmpty()) return
+        frameUndo.addLast(frames())
+        setFrames(frameRedo.removeLast(), record = false)
     }
 
     // ------------------------------------------------------------------ crop
@@ -180,6 +309,17 @@ class AnimatedViewModel(
         val s = _ui.value
         val name = s.sourceName ?: return
         previewJob?.cancel()
+        // Pictures depend on crop / fit / caption; a changed look means they must be rendered again.
+        val key = Triple(s.settings.crop, s.settings.cover, s.settings.caption)
+        if (key != cacheKey) {
+            thumbCache.clear()
+            cacheKey = key
+        }
+        val manual = s.settings.frames
+        if (manual != null) {
+            previewJob = viewModelScope.launch { refreshManualPreview(name, s.isVideo, s.settings, manual) }
+            return
+        }
         previewJob = viewModelScope.launch {
             delay(200)   // wait until the user stops dragging a slider
             val frameDuration = (1000f / s.settings.fps).toLong().coerceAtLeast(40L)
@@ -199,7 +339,7 @@ class AnimatedViewModel(
                             // (a half-built loop would play as a short, jerky cycle).
                             if (i == 0 || i == count - 1) {
                                 val snapshot = out.toList()
-                                _ui.update { it.copy(frames = snapshot, frameMs = step) }
+                                _ui.update { it.copy(frames = snapshot, frameMs = step, frameDurations = emptyList(), thumbs = emptyMap()) }
                             }
                         }
                     }
@@ -211,6 +351,45 @@ class AnimatedViewModel(
             } catch (e: OutOfMemoryError) {
                 _ui.update { it.copy(message = R.string.err_memory) }
             }
+        }
+    }
+
+    /** Renders only the source moments that are not cached yet (in time order, which is the cheap direction). */
+    private suspend fun refreshManualPreview(name: String, isVideo: Boolean, settings: AnimatedSettings, list: List<TimelineFrame>) {
+        try {
+            withContext(Dispatchers.Default) {
+                AnimatedConverter.open(file(name), isVideo).use { src ->
+                    val project = AnimatedConverter.projectFor(src, settings)
+                    val missing = list.map { it.sourceMs }.distinct().filter { it !in thumbCache }.sorted()
+                    var done = 0
+                    for (ms in missing) {
+                        ensureActive()
+                        val raw = src.frameAt(ms) ?: continue
+                        thumbCache[ms] = StickerRenderer.render(project, raw, MANUAL_PREVIEW_SIZE)
+                        raw.recycle()
+                        if (++done % 10 == 0) publishManual(list)
+                    }
+                }
+            }
+            publishManual(list)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _ui.update { it.copy(message = R.string.err_load_failed) }
+        } catch (e: OutOfMemoryError) {
+            _ui.update { it.copy(message = R.string.err_memory) }
+        }
+    }
+
+    private fun publishManual(list: List<TimelineFrame>) {
+        val snap = HashMap(thumbCache)
+        val shown = list.filter { snap.containsKey(it.sourceMs) }
+        _ui.update {
+            it.copy(
+                thumbs = snap,
+                frames = shown.map { f -> snap.getValue(f.sourceMs) },
+                frameDurations = shown.map { f -> f.durationMs.toLong() },
+            )
         }
     }
 
@@ -288,7 +467,11 @@ class AnimatedViewModel(
         val bytes = s.resultBytes ?: return
         viewModelScope.launch {
             try {
-                repo.addSticker(packId, bytes, true, "😀", s.sourceName, ProjectJson.encode(s.settings))
+                if (stickerId.isNotEmpty()) {
+                    repo.replaceSticker(stickerId, bytes, true, null, s.sourceName, ProjectJson.encode(s.settings))
+                } else {
+                    repo.addSticker(packId, bytes, true, "😀", s.sourceName, ProjectJson.encode(s.settings))
+                }
                 _ui.update { it.copy(saved = true) }
             } catch (e: PackRuleException) {
                 _ui.update { it.copy(message = StickerImport.messageFor(e)) }
@@ -305,5 +488,6 @@ class AnimatedViewModel(
     companion object {
         private const val MAX_PREVIEW_FRAMES = 90
         private const val PREVIEW_SIZE = 256
+        private const val MANUAL_PREVIEW_SIZE = 192
     }
 }

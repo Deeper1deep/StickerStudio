@@ -110,6 +110,7 @@ fun PackDetailScreen(
     packId: String,
     onBack: () -> Unit,
     onEditor: (source: String, sticker: String) -> Unit,
+    onEditAnimated: (source: String, sticker: String) -> Unit = { _, _ -> },
     onAnimated: (source: String, isVideo: Boolean) -> Unit,
 ) {
     val context = LocalContext.current
@@ -377,6 +378,10 @@ fun PackDetailScreen(
                             if (!s.animated) DropdownMenuItem(
                                 text = { Text(stringResource(R.string.edit_sticker)) },
                                 onClick = { menuFor = null; onEditor(s.sourceFile.orEmpty(), s.id) },
+                            )
+                            if (s.animated && !s.sourceFile.isNullOrEmpty()) DropdownMenuItem(
+                                text = { Text(stringResource(R.string.edit_sticker)) },
+                                onClick = { menuFor = null; onEditAnimated(s.sourceFile.orEmpty(), s.id) },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.replace_image)) },

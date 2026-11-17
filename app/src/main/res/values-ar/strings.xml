@@ -127,6 +127,16 @@
     <string name="font_sans">بدون زوائد</string>
     <string name="font_script">مخطوط</string>
     <string name="font_serif">بزوائد</string>
+    <string name="frame_delete">حذف</string>
+    <string name="frame_duplicate">تكرار</string>
+    <string name="frame_earlier">للخلف</string>
+    <string name="frame_later">للأمام</string>
+    <string name="frame_length">مدة الإطار: %1$d م.ث</string>
+    <string name="frames_edit">تعديل الإطارات</string>
+    <string name="frames_info">%1$d إطار · %2$.1f ث</string>
+    <string name="frames_limit">لا يمكن أن تزيد الحركة عن 10 ثوانٍ.</string>
+    <string name="frames_reset">إعادة الإطارات</string>
+    <string name="frames_speed">السرعة ×%1$.1f</string>
     <string name="hint_draw">ارسم بإصبعك.</string>
     <string name="hint_erase">ارسم فوق المنطقة لمحوها أو استعادتها.</string>
     <string name="hint_gestures">اسحب للتحريك، واقرص للتكبير والتدوير.</string>

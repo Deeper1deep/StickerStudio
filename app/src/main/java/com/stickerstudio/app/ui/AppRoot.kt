@@ -60,13 +60,13 @@ object Routes {
     const val UPDATES = "updates"
     const val PACK = "pack/{packId}"
     const val EDITOR = "editor?source={source}&pack={pack}&sticker={sticker}&draft={draft}"
-    const val ANIMATED = "animated?pack={pack}&source={source}&video={video}"
+    const val ANIMATED = "animated?pack={pack}&source={source}&video={video}&sticker={sticker}"
 
     fun pack(id: String) = "pack/$id"
     fun editor(source: String = "", pack: String = "", sticker: String = "", draft: String = "") =
         "editor?source=${Uri.encode(source)}&pack=${Uri.encode(pack)}&sticker=${Uri.encode(sticker)}&draft=${Uri.encode(draft)}"
-    fun animated(pack: String = "", source: String = "", video: Boolean = false) =
-        "animated?pack=${Uri.encode(pack)}&source=${Uri.encode(source)}&video=${if (video) "1" else ""}"
+    fun animated(pack: String = "", source: String = "", video: Boolean = false, sticker: String = "") =
+        "animated?pack=${Uri.encode(pack)}&source=${Uri.encode(source)}&video=${if (video) "1" else ""}&sticker=${Uri.encode(sticker)}"
 }
 
 /** Copies a picked picture into the app's private source folder (re-editable later). Null on failure. */
@@ -200,6 +200,9 @@ fun AppRoot() {
                     packId = id,
                     onBack = { nav.popBackStack() },
                     onEditor = { source, sticker -> nav.navigate(Routes.editor(source = source, pack = id, sticker = sticker)) },
+                    onEditAnimated = { source, sticker ->
+                        nav.navigate(Routes.animated(pack = id, source = source, video = !source.endsWith(".gif"), sticker = sticker))
+                    },
                     onAnimated = { source, video -> nav.navigate(Routes.animated(id, source, video)) },
                 )
             }
@@ -225,7 +228,7 @@ fun AppRoot() {
             }
             composable(
                 Routes.ANIMATED,
-                arguments = listOf("pack", "source", "video").map {
+                arguments = listOf("pack", "source", "video", "sticker").map {
                     navArgument(it) { type = NavType.StringType; defaultValue = "" }
                 },
             ) { entry ->
@@ -234,6 +237,7 @@ fun AppRoot() {
                     packId = pack,
                     source = entry.arguments?.getString("source").orEmpty(),
                     isVideo = entry.arguments?.getString("video").orEmpty() == "1",
+                    stickerId = entry.arguments?.getString("sticker").orEmpty(),
                     onClose = { nav.popBackStack() },
                     onStatic = { name ->
                         nav.popBackStack()

@@ -118,4 +118,6 @@ data class AnimatedSettings(
     val cover: Boolean = false,
     val caption: String = "",
     val crop: CropRect = CropRect(),
+    /** Hand-edited timeline (delete / duplicate / reorder / per-frame time). null = even steps from the settings above. */
+    val frames: List<TimelineFrame>? = null,
 )

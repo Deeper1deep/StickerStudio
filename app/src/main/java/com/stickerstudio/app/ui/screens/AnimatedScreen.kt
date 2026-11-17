@@ -4,6 +4,14 @@ import android.app.Application
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,10 +81,11 @@ fun AnimatedScreen(
     isVideo: Boolean,
     onClose: () -> Unit,
     onStatic: (String) -> Unit,
+    stickerId: String = "",
 ) {
     val context = LocalContext.current
     val vm: AnimatedViewModel = viewModel(
-        factory = vmFactory { AnimatedViewModel(context.applicationContext as Application, packId, source, isVideo) },
+        factory = vmFactory { AnimatedViewModel(context.applicationContext as Application, packId, source, isVideo, stickerId) },
     )
     val ui by vm.ui.collectAsStateWithLifecycle()
 
@@ -138,7 +147,7 @@ fun AnimatedScreen(
                             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                         )
                     } else {
-                        LoopingPreview(ui.frames, ui.frameMs)
+                        LoopingPreview(ui.frames, ui.frameMs, ui.frameDurations)
                         if (ui.frames.isEmpty()) CircularProgressIndicator()
                     }
                 }
@@ -160,6 +169,8 @@ fun AnimatedScreen(
                             Text(stringResource(R.string.anim_static))
                         }
                     }
+
+                    FrameTimeline(ui, vm)
 
                     val maxDur = minOf(ui.durationMs.coerceAtLeast(500L), 10_000L).toFloat()
                     if (ui.isVideo) {
@@ -253,20 +264,25 @@ fun AnimatedScreen(
 }
 
 /**
- * Plays [frames] in a loop, [frameMs] per frame. The frame is chosen from the display clock
- * (not from a chain of delays), so timing stays even and does not drift when a frame is slow.
+ * Plays [frames] in a loop. Each frame lasts [durations] (or [frameMs] when that list is empty / does not
+ * match). The frame is chosen from the display clock (not from a chain of delays), so timing stays even
+ * and does not drift when a frame is slow.
  */
 @Composable
-private fun LoopingPreview(frames: List<android.graphics.Bitmap>, frameMs: Long) {
+private fun LoopingPreview(frames: List<android.graphics.Bitmap>, frameMs: Long, durations: List<Long> = emptyList()) {
     val images = remember(frames) { frames.map { it.asImageBitmap() } }
     var index by remember(frames) { mutableIntStateOf(0) }
-    LaunchedEffect(frames, frameMs) {
+    LaunchedEffect(frames, frameMs, durations) {
         if (frames.size > 1) {
-            val step = frameMs.coerceAtLeast(1L)
+            val lengths = if (durations.size == frames.size) durations.map { it.coerceAtLeast(1L) }
+            else List(frames.size) { frameMs.coerceAtLeast(1L) }
+            val total = lengths.sum()
             val start = withFrameNanos { it }
             while (true) {
                 withFrameNanos { now ->
-                    val i = (((now - start) / 1_000_000L) / step % frames.size).toInt()
+                    var t = ((now - start) / 1_000_000L) % total
+                    var i = 0
+                    while (i < lengths.size - 1 && t >= lengths[i]) { t -= lengths[i]; i++ }
                     if (i != index) index = i
                 }
             }
@@ -280,5 +296,74 @@ private fun LoopingPreview(frames: List<android.graphics.Bitmap>, frameMs: Long)
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
         )
+    }
+}
+
+/** Frame strip: select a frame, then delete / duplicate / move it, or change how long it lasts. */
+@Composable
+private fun FrameTimeline(ui: AnimatedUi, vm: AnimatedViewModel) {
+    val frames = ui.settings.frames
+    if (frames == null) {
+        OutlinedButton(onClick = vm::startFrameEdit, enabled = !ui.converting) { Text(stringResource(R.string.frames_edit)) }
+        return
+    }
+    val selected = ui.selectedFrame.coerceIn(0, frames.size - 1)
+    val total = frames.sumOf { it.durationMs }
+    Text(
+        stringResource(R.string.frames_info, frames.size, total / 1000f),
+        style = MaterialTheme.typography.titleSmall,
+    )
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        itemsIndexed(frames) { i, f ->
+            val thumb = ui.thumbs[f.sourceMs]
+            val active = i == selected
+            Column(
+                Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(if (active) 3.dp else 1.dp, if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                    .clickable { vm.selectFrame(i) }
+                    .padding(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).checkerboard(), contentAlignment = Alignment.Center) {
+                    if (thumb != null) {
+                        Image(thumb.asImageBitmap(), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                    } else {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    }
+                }
+                Text("${i + 1} · ${f.durationMs}ms", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        TextButton(onClick = { vm.moveFrame(-1) }, enabled = !ui.converting && selected > 0) { Text(stringResource(R.string.frame_earlier)) }
+        TextButton(onClick = { vm.moveFrame(1) }, enabled = !ui.converting && selected < frames.size - 1) { Text(stringResource(R.string.frame_later)) }
+        TextButton(onClick = vm::duplicateFrame, enabled = !ui.converting) { Text(stringResource(R.string.frame_duplicate)) }
+        TextButton(onClick = vm::deleteFrame, enabled = !ui.converting && frames.size > 2) { Text(stringResource(R.string.frame_delete)) }
+    }
+    val current = frames[selected]
+    Text(stringResource(R.string.frame_length, current.durationMs), style = MaterialTheme.typography.labelLarge)
+    Slider(
+        value = current.durationMs.toFloat().coerceIn(20f, 1000f),
+        onValueChange = { v -> vm.setFrameDuration(v.roundToInt(), commit = false) },
+        onValueChangeFinished = vm::commitFrameDuration,
+        valueRange = 20f..1000f,
+        enabled = !ui.converting,
+    )
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        itemsIndexed(listOf(0.5f, 1.5f, 2f)) { _, factor ->
+            FilterChip(
+                selected = false,
+                onClick = { vm.setSpeed(factor) },
+                enabled = !ui.converting,
+                label = { Text(stringResource(R.string.frames_speed, factor)) },
+            )
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        TextButton(onClick = vm::undoFrames, enabled = !ui.converting && ui.canUndoFrames) { Text(stringResource(R.string.undo)) }
+        TextButton(onClick = vm::redoFrames, enabled = !ui.converting && ui.canRedoFrames) { Text(stringResource(R.string.redo)) }
+        TextButton(onClick = vm::resetFrames, enabled = !ui.converting) { Text(stringResource(R.string.frames_reset)) }
     }
 }

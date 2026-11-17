@@ -65,6 +65,7 @@ object ProjectJson {
             "v" to VERSION, "startMs" to a.startMs, "durationMs" to a.durationMs,
             "fps" to a.fps, "cover" to a.cover, "caption" to a.caption,
             "crop" to cropMap(a.crop),
+            "frames" to a.frames?.map { listOf(it.sourceMs, it.durationMs) },
         )
     )
 
@@ -164,6 +165,12 @@ object ProjectJson {
             cover = m.optBool("cover", false),
             caption = m.optString("caption") ?: "",
             crop = decodeCrop(m["crop"].asObject()),
+            frames = m["frames"].asArray()?.mapNotNull { e ->
+                val pair = e.asArray() ?: return@mapNotNull null
+                val ms = (pair.getOrNull(0) as? Number)?.toLong() ?: return@mapNotNull null
+                val d = (pair.getOrNull(1) as? Number)?.toInt() ?: return@mapNotNull null
+                TimelineFrame(ms.coerceAtLeast(0L), d.coerceIn(FramePlan.MIN_FRAME_MS, FramePlan.MAX_FRAME_MS))
+            }?.take(FramePlan.MAX_FRAMES)?.let { if (it.size >= FramePlan.MIN_FRAMES) FramePlan.clampTotal(it, FramePlan.MAX_TOTAL_MS) else null },
         )
     }
 
