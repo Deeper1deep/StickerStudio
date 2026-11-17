@@ -322,7 +322,7 @@
     <string name="wa_cancelled">Nothing was added to WhatsApp.</string>
     <string name="wa_not_installed">WhatsApp is not installed on this device.</string>
     <string name="wa_rejected">WhatsApp rejected the pack:</string>
-    <string name="whats_new_body">• Fixes for the share window\n• A crash report screen if the app ever closes unexpectedly\n• QR with the app icon, drag to reorder, multi-select, undo</string>
+    <string name="whats_new_body">• New Layers tab in the editor: hide, lock, reorder, duplicate, rename\n• Text: opacity, alignment, letter and line spacing, background\n• Picture adjustments: brightness, contrast, saturation, warmth, exposure, blur, B&amp;W, sepia</string>
     <string name="whats_new_title">What is new in %1$s</string>
     <string name="whatsapp">WhatsApp</string>
     <string name="whatsapp_business">WhatsApp Business</string>

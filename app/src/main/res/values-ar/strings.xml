@@ -322,7 +322,7 @@
     <string name="wa_cancelled">لم تتم إضافة شيء إلى واتساب.</string>
     <string name="wa_not_installed">واتساب غير مثبت على هذا الجهاز.</string>
     <string name="wa_rejected">رفض واتساب الحزمة:</string>
-    <string name="whats_new_body">• إصلاحات لنافذة المشاركة\n• شاشة تقرير خطأ لو التطبيق قفل فجأة\n• QR بأيقونة التطبيق، السحب للترتيب، التحديد المتعدد، التراجع</string>
+    <string name="whats_new_body">• تبويب جديد للطبقات في المحرر: إخفاء وقفل وترتيب وتكرار وتغيير اسم\n• النصوص: شفافية ومحاذاة ومسافات بين الحروف والأسطر وخلفية\n• تعديل الصورة: سطوع وتباين وتشبع ودرجة حرارة وتعريض وتمويه وأبيض وأسود وسيبيا</string>
     <string name="whats_new_title">ما الجديد في %1$s</string>
     <string name="whatsapp">واتساب</string>
     <string name="whatsapp_business">واتساب للأعمال</string>

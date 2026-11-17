@@ -26,6 +26,7 @@ jobs:
       - name: Debug APK (debug-signed, for testing only)
         run: ./gradlew assembleDebug --stacktrace -PAPP_VERSION_CODE=$BUILD_CODE -PAPP_VERSION_NAME=1.0.$BUILD_CODE -PUPDATE_REPO_OWNER=${{ github.repository_owner }} -PUPDATE_REPO_NAME=${{ github.event.repository.name }}
       - uses: actions/upload-artifact@v4
+        continue-on-error: true   # a full Actions storage quota must not fail a good build
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
@@ -75,6 +76,7 @@ jobs:
           gh release list --limit 100 --json tagName --jq '.[].tagName' | grep '^build-' | sort -t- -k2 -n -r | tail -n +6 | while read t; do gh release delete "$t" --cleanup-tag -y || true; done
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: test-reports
           path: app/build/reports/tests/

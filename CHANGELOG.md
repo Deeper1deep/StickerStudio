@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.36 - static editor: layers panel, text options, picture adjustments
+
+- New **Layers** tab: show/hide, lock, reorder (front/back), duplicate, rename and delete layers.
+  A locked layer cannot be moved by accident.
+- Text: opacity, left/centre/right alignment, letter spacing (not applied to Arabic so letters stay
+  joined), line spacing and an optional background box.
+- Shapes: opacity.
+- Effects: brightness, contrast, saturation, warmth, exposure, blur, black & white and sepia.
+  They are applied when rendering (non-destructive) and saved with the project.
+- Build: a full GitHub Actions storage quota no longer fails a good build.
+
 ## 1.0.32 - share dialog hardening and crash report
 
 - The QR is now built off the main thread and any failure is contained instead of closing the app.
