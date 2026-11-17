@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.38 - static editor: picture layers, sharpen, lines & arrows
+
+- **Picture layers**: add any photo on top of the sticker (Layers tab); move, scale, rotate, fade, reorder and lock it like text. Up to 8 per sticker; stored with the project so it re-opens.
+- **Sharpen** slider in Effects (non-destructive, applied at render time; transparent edges untouched).
+- New shapes: **line** and **arrow**; shapes can be **outline only**.
+- **Pen opacity** (each stroke fades as one piece).
+- **Snap guides**: dragging a layer sticks to the sticker's centre lines with a visible guide.
+- Old projects open unchanged (new fields have defaults).
+- Not device-tested yet: verified by CI build + unit tests only.
+
 ## 1.0.37 - animated editor: frame timeline
 
 - **Edit frames** in the GIF / video editor: a strip of frames where you can delete, duplicate and

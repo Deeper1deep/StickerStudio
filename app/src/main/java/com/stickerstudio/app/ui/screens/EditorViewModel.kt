@@ -51,6 +51,10 @@ data class EditorUi(
     val brush: Float = 28f,
     val penColor: Int = -65536,
     val penWidth: Float = 10f,
+    val penAlpha: Float = 1f,
+    /** Snap guides shown while a layer is dragged over the centre of the sticker. */
+    val guideX: Boolean = false,
+    val guideY: Boolean = false,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val busy: Boolean = false,
@@ -88,6 +92,11 @@ class EditorViewModel(
     private var currentSourceFile: String? = null
     private var loadedBitmap: Bitmap? = null
     private var activeDraftId: String? = draftId.ifEmpty { null }
+
+    /** Bitmaps of picture layers by layer id (downscaled, kept only in memory). */
+    private val layerImages = java.util.concurrent.ConcurrentHashMap<String, Bitmap>()
+    private var dragRawX: Float? = null
+    private var dragRawY: Float? = null
 
     val targetPackId: String get() = initialPackId
 
@@ -139,6 +148,18 @@ class EditorViewModel(
                 return
             }
         }
+        withContext(Dispatchers.IO) {
+            for (l in project.layers) {
+                if (l.kind != LayerKind.IMAGE || l.imageFile.isEmpty()) continue
+                try {
+                    layerImages[l.id] = BitmapLoader.decodeFile(repo.paths.source(l.imageFile), LAYER_IMAGE_SIDE)
+                } catch (e: Exception) {
+                    // a missing picture layer is skipped instead of failing the whole editor
+                } catch (e: OutOfMemoryError) {
+                    // same: keep editing with the layers that did load
+                }
+            }
+        }
         currentSourceFile = fileName
         loadedBitmap = bitmap
         savedEmojis = emojisFromSticker
@@ -155,10 +176,11 @@ class EditorViewModel(
     private fun render() {
         val state = _ui.value
         val version = ++renderVersion
+        val images = HashMap(layerImages)
         renderJob?.cancel()
         renderJob = viewModelScope.launch {
             val bitmap = withContext(Dispatchers.Default) {
-                StickerRenderer.render(state.project, state.source, PREVIEW_SIZE)
+                StickerRenderer.render(state.project, state.source, PREVIEW_SIZE, images)
             }
             if (version == renderVersion) {
                 _ui.update { it.copy(preview = bitmap) }
@@ -199,6 +221,9 @@ class EditorViewModel(
     fun endGesture() {
         val start = gestureStart ?: return
         gestureStart = null
+        dragRawX = null
+        dragRawY = null
+        if (_ui.value.guideX || _ui.value.guideY) _ui.update { it.copy(guideX = false, guideY = false) }
         if (start.project != _ui.value.project || start.source !== _ui.value.source) pushUndo(start)
     }
 
@@ -233,6 +258,7 @@ class EditorViewModel(
     fun setBrush(size: Float) = _ui.update { it.copy(brush = size) }
     fun setPenColor(color: Int) = _ui.update { it.copy(penColor = color) }
     fun setPenWidth(width: Float) = _ui.update { it.copy(penWidth = width) }
+    fun setPenAlpha(alpha: Float) = _ui.update { it.copy(penAlpha = alpha.coerceIn(0.05f, 1f)) }
     fun consumeMessage() = _ui.update { it.copy(message = null) }
 
     // ------------------------------------------------------------------ crop
@@ -257,6 +283,35 @@ class EditorViewModel(
         val selected = if (s.tool == Tool.TEXT || s.tool == Tool.SHAPES || s.tool == Tool.LAYERS) s.selectedLayerId else null
         // A locked layer cannot be moved by accident.
         if (selected != null && s.project.layers.firstOrNull { it.id == selected }?.locked == true) return
+        // Dragging a layer: follow the finger exactly, but stick to the sticker's centre lines when close.
+        var snapX = false
+        var snapY = false
+        if (selected != null) {
+            val cur = s.project.layers.firstOrNull { it.id == selected }
+            if (cur != null) {
+                val rx = (dragRawX ?: cur.x) + panX
+                val ry = (dragRawY ?: cur.y) + panY
+                dragRawX = rx
+                dragRawY = ry
+                snapX = kotlin.math.abs(rx - CENTER) < SNAP_DISTANCE
+                snapY = kotlin.math.abs(ry - CENTER) < SNAP_DISTANCE
+                val nx = if (snapX) CENTER else rx
+                val ny = if (snapY) CENTER else ry
+                live { p ->
+                    p.copy(
+                        layers = p.layers.map { l ->
+                            if (l.id != selected) l else l.copy(
+                                x = nx, y = ny,
+                                scale = (l.scale * zoom).coerceIn(0.1f, 8f),
+                                rotation = l.rotation + rotationDeg,
+                            )
+                        }
+                    )
+                }
+                if (snapX != s.guideX || snapY != s.guideY) _ui.update { it.copy(guideX = snapX, guideY = snapY) }
+                return
+            }
+        }
         live { p ->
             if (selected == null) {
                 val x = p.xform
@@ -289,7 +344,7 @@ class EditorViewModel(
         if (s.tool == Tool.ERASE) {
             live { p -> p.copy(erase = p.erase + EraseStroke(s.eraseRestore, s.brush, listOf(x, y))) }
         } else {
-            live { p -> p.copy(pen = p.pen + PenStroke(s.penColor, s.penWidth, listOf(x, y))) }
+            live { p -> p.copy(pen = p.pen + PenStroke(s.penColor, s.penWidth, listOf(x, y), s.penAlpha)) }
         }
     }
 
@@ -336,6 +391,33 @@ class EditorViewModel(
         selectLayer(layer.id)
     }
 
+    /** Adds a picture from the gallery as a movable layer on top of the sticker. */
+    fun addImageLayer(uri: android.net.Uri) {
+        if (_ui.value.busy) return
+        if (_ui.value.project.layers.count { it.kind == LayerKind.IMAGE } >= MAX_IMAGE_LAYERS) {
+            _ui.update { it.copy(message = EditorMessage(R.string.layer_image_limit)) }
+            return
+        }
+        _ui.update { it.copy(busy = true) }
+        viewModelScope.launch {
+            try {
+                val (name, bmp) = withContext(Dispatchers.IO) {
+                    val b = BitmapLoader.decode(getApplication(), uri, LAYER_IMAGE_SIDE)
+                    BitmapLoader.savePng(repo.paths.sources, b) to b
+                }
+                val layer = Layer(id = newId(), kind = LayerKind.IMAGE, imageFile = name, size = 280f)
+                layerImages[layer.id] = bmp
+                _ui.update { it.copy(busy = false) }
+                this@EditorViewModel.apply { it.copy(layers = it.layers + layer) }
+                selectLayer(layer.id)
+            } catch (e: Exception) {
+                _ui.update { it.copy(busy = false, message = EditorMessage(R.string.err_image_open)) }
+            } catch (e: OutOfMemoryError) {
+                _ui.update { it.copy(busy = false, message = EditorMessage(R.string.err_memory)) }
+            }
+        }
+    }
+
     /** Discrete edit of one layer (colour, text, font...). */
     fun updateLayer(id: String, change: (Layer) -> Layer) =
         apply { p -> p.copy(layers = p.layers.map { if (it.id == id) change(it) else it }) }
@@ -357,6 +439,7 @@ class EditorViewModel(
     fun duplicateLayer(id: String) {
         val src = _ui.value.project.layers.firstOrNull { it.id == id } ?: return
         val copy = src.copy(id = newId(), x = src.x + 24f, y = src.y + 24f, locked = false, name = "")
+        layerImages[src.id]?.let { layerImages[copy.id] = it }
         apply { p ->
             val i = p.layers.indexOfFirst { it.id == id }
             p.copy(layers = p.layers.toMutableList().apply { add(i + 1, copy) })
@@ -406,8 +489,9 @@ class EditorViewModel(
         viewModelScope.launch {
             try {
                 val state = _ui.value
+                val images = HashMap(layerImages)
                 val webp = withContext(Dispatchers.Default) {
-                    val bitmap = StickerRenderer.render(state.project, state.source)
+                    val bitmap = StickerRenderer.render(state.project, state.source, images = images)
                     val bytes = StickerEncoder.encodeStatic(bitmap)
                     bitmap.recycle()
                     bytes
@@ -480,5 +564,9 @@ class EditorViewModel(
     companion object {
         private const val PREVIEW_SIZE = 384
         private const val MAX_HISTORY = 20
+        private const val LAYER_IMAGE_SIDE = 768
+        private const val MAX_IMAGE_LAYERS = 8
+        private const val CENTER = 256f
+        private const val SNAP_DISTANCE = 6f
     }
 }

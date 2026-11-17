@@ -40,6 +40,7 @@ object StickerRenderer {
         project: StickerProject,
         source: Bitmap?,
         outSize: Int = WhatsAppLimits.STICKER_SIZE,
+        images: Map<String, Bitmap> = emptyMap(),
     ): Bitmap {
         val k = outSize / SPACE
         val content = Bitmap.createBitmap(outSize, outSize, Bitmap.Config.ARGB_8888)
@@ -60,6 +61,7 @@ object StickerRenderer {
             when (layer.kind) {
                 LayerKind.TEXT -> drawText(canvas, layer, k)
                 LayerKind.SHAPE -> drawShape(canvas, layer, k)
+                LayerKind.IMAGE -> drawImageLayer(canvas, layer, images[layer.id], k)
             }
             if (faded) canvas.restore()
         }
@@ -123,6 +125,14 @@ object StickerRenderer {
             layer.recycle()
             layer = blurred
             maskCanvas = Canvas(layer)
+        }
+
+        if (p.adjust.sharpen > 0.01f) {
+            val w = layer.width
+            val h = layer.height
+            val px = IntArray(w * h)
+            layer.getPixels(px, 0, w, 0, 0, w, h)
+            layer.setPixels(Sharpen.apply(px, w, h, p.adjust.sharpen), 0, w, 0, 0, w, h)
         }
 
         if (p.mask != MaskKind.NONE) {
@@ -200,6 +210,15 @@ object StickerRenderer {
         paint.strokeCap = Paint.Cap.ROUND
         paint.strokeJoin = Paint.Join.ROUND
         paint.color = s.color
+        if (s.alpha < 0.999f) {
+            // A whole stroke is faded as one piece, so overlapping parts of one stroke do not get darker.
+            val bounds = RectF(0f, 0f, c.width.toFloat(), c.height.toFloat())
+            c.saveLayerAlpha(bounds, (s.alpha.coerceIn(0f, 1f) * 255f).roundToInt())
+            paint.strokeWidth = max(1f, s.width * k)
+            drawStroke(c, s.points, k, paint)
+            c.restore()
+            return
+        }
         paint.strokeWidth = max(1f, s.width * k)
         drawStroke(c, s.points, k, paint)
     }
@@ -299,6 +318,18 @@ object StickerRenderer {
                 }
                 path.close()
             }
+            ShapeKind.LINE -> {
+                path.moveTo(-r, 0f)
+                path.lineTo(r, 0f)
+            }
+            ShapeKind.ARROW -> {
+                path.moveTo(-r, 0f)
+                path.lineTo(r, 0f)
+                val head = r * 0.45f
+                path.moveTo(r - head, -head)
+                path.lineTo(r, 0f)
+                path.lineTo(r - head, head)
+            }
             ShapeKind.HEART -> {
                 path.moveTo(0f, r * 0.9f)
                 path.cubicTo(-r * 1.6f, -r * 0.1f, -r * 0.7f, -r * 1.1f, 0f, -r * 0.4f)
@@ -313,6 +344,21 @@ object StickerRenderer {
         c.rotate(l.rotation)
         c.scale(l.scale, l.scale)
 
+        val lineOnly = l.shape == ShapeKind.LINE || l.shape == ShapeKind.ARROW
+        if (lineOnly || l.hollow) {
+            // Outline-only shapes: drawn with the main colour; thickness comes from the outline slider.
+            val line = Paint(Paint.ANTI_ALIAS_FLAG)
+            line.style = Paint.Style.STROKE
+            line.strokeJoin = Paint.Join.ROUND
+            line.strokeCap = Paint.Cap.ROUND
+            line.strokeWidth = if (l.strokeWidth > 0f) l.strokeWidth * 2f else if (lineOnly) l.size * 0.05f else 6f
+            line.color = l.color
+            if (l.shadow) line.setShadowLayer(l.size * 0.06f, l.size * 0.03f, l.size * 0.03f, 0xAA000000.toInt())
+            c.drawPath(path, line)
+            c.restore()
+            return
+        }
+
         val fill = Paint(Paint.ANTI_ALIAS_FLAG)
         fill.color = l.color
         if (l.shadow) fill.setShadowLayer(l.size * 0.06f, l.size * 0.03f, l.size * 0.03f, 0xAA000000.toInt())
@@ -326,6 +372,22 @@ object StickerRenderer {
             line.color = l.strokeColor
             c.drawPath(path, line)
         }
+        c.restore()
+    }
+
+    /** A picture layer: [bmp] fitted so its longest side equals the layer size, centred on (x, y). */
+    private fun drawImageLayer(c: Canvas, l: Layer, bmp: Bitmap?, k: Float) {
+        if (bmp == null || bmp.isRecycled) return
+        val fit = l.size / max(bmp.width, bmp.height).toFloat()
+        c.save()
+        c.scale(k, k)
+        c.translate(l.x, l.y)
+        c.rotate(l.rotation)
+        c.scale(l.scale, l.scale)
+        val w = bmp.width * fit
+        val h = bmp.height * fit
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        c.drawBitmap(bmp, null, RectF(-w / 2f, -h / 2f, w / 2f, h / 2f), paint)
         c.restore()
     }
 

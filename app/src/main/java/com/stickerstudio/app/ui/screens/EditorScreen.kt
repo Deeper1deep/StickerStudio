@@ -2,6 +2,9 @@ package com.stickerstudio.app.ui.screens
 
 import android.app.Application
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -310,6 +313,13 @@ private fun PreviewArea(vm: EditorViewModel, ui: EditorUi) {
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+            if (ui.guideX || ui.guideY) {
+                val guideColor = MaterialTheme.colorScheme.primary
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                    if (ui.guideX) drawLine(guideColor, Offset(size.width / 2f, 0f), Offset(size.width / 2f, size.height), strokeWidth = 2f)
+                    if (ui.guideY) drawLine(guideColor, Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f), strokeWidth = 2f)
+                }
+            }
         }
     }
 }
@@ -522,7 +532,11 @@ private fun LayerChips(layers: List<Layer>, selectedId: String?, onSelect: (Stri
                 onClick = { onSelect(layer.id) },
                 label = {
                     Text(
-                        if (layer.kind == LayerKind.TEXT) layer.text.replace('\n', ' ').take(12) else shapeGlyph(layer.shape),
+                        when (layer.kind) {
+                            LayerKind.TEXT -> layer.text.replace('\n', ' ').take(12)
+                            LayerKind.IMAGE -> "🖼"
+                            else -> shapeGlyph(layer.shape)
+                        },
                     )
                 },
             )
@@ -535,6 +549,8 @@ private fun shapeGlyph(shape: ShapeKind): String = when (shape) {
     ShapeKind.RECT -> "■"
     ShapeKind.STAR -> "★"
     ShapeKind.HEART -> "♥"
+    ShapeKind.LINE -> "—"
+    ShapeKind.ARROW -> "→"
 }
 
 @Composable
@@ -636,6 +652,9 @@ private fun ShapesPanel(vm: EditorViewModel, ui: EditorUi) {
         LabeledSlider(stringResource(R.string.size), selected.size, 40f..420f, { v -> vm.liveLayer(id) { it.copy(size = v) } }, vm::endGesture)
         Text(stringResource(R.string.fill_color), style = MaterialTheme.typography.labelLarge)
         ColorPalette(selected.color, { c -> vm.updateLayer(id) { it.copy(color = c) } })
+        if (selected.shape != ShapeKind.LINE && selected.shape != ShapeKind.ARROW) {
+            SwitchRow(stringResource(R.string.shape_hollow), selected.hollow) { on -> vm.updateLayer(id) { it.copy(hollow = on) } }
+        }
         LabeledSlider(stringResource(R.string.outline_width), selected.strokeWidth, 0f..20f, { v -> vm.liveLayer(id) { it.copy(strokeWidth = v) } }, vm::endGesture)
         if (selected.strokeWidth > 0f) {
             ColorPalette(selected.strokeColor, { c -> vm.updateLayer(id) { it.copy(strokeColor = c) } })
@@ -652,6 +671,7 @@ private fun DrawPanel(vm: EditorViewModel, ui: EditorUi) {
     Text(stringResource(R.string.pen_color), style = MaterialTheme.typography.labelLarge)
     ColorPalette(ui.penColor, vm::setPenColor)
     LabeledSlider(stringResource(R.string.brush_size), ui.penWidth, 2f..60f, vm::setPenWidth, {})
+    LabeledSlider(stringResource(R.string.pen_opacity), ui.penAlpha, 0.1f..1f, vm::setPenAlpha, {})
     OutlinedButton(onClick = vm::clearPen, enabled = ui.project.pen.isNotEmpty()) { Text(stringResource(R.string.clear_drawing)) }
 }
 
@@ -674,6 +694,7 @@ private fun EffectsPanel(vm: EditorViewModel, ui: EditorUi) {
     LabeledSlider(stringResource(R.string.adjust_warmth), adj.warmth, -1f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(warmth = v)) } }, vm::endGesture)
     LabeledSlider(stringResource(R.string.adjust_exposure), adj.exposure, -1f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(exposure = v)) } }, vm::endGesture)
     LabeledSlider(stringResource(R.string.adjust_blur), adj.blur, 0f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(blur = v)) } }, vm::endGesture)
+    LabeledSlider(stringResource(R.string.adjust_sharpen), adj.sharpen, 0f..1f, { v -> vm.live { it.copy(adjust = it.adjust.copy(sharpen = v)) } }, vm::endGesture)
     SwitchRow(stringResource(R.string.adjust_grayscale), adj.grayscale) { on -> vm.apply { it.copy(adjust = it.adjust.copy(grayscale = on)) } }
     SwitchRow(stringResource(R.string.adjust_sepia), adj.sepia) { on -> vm.apply { it.copy(adjust = it.adjust.copy(sepia = on)) } }
     OutlinedButton(onClick = { vm.apply { it.copy(adjust = Adjust()) } }, enabled = !adj.isDefault) { Text(stringResource(R.string.adjust_reset)) }
@@ -683,6 +704,12 @@ private fun EffectsPanel(vm: EditorViewModel, ui: EditorUi) {
 private fun LayersPanel(vm: EditorViewModel, ui: EditorUi) {
     val layers = ui.project.layers
     var renaming by remember { mutableStateOf<Layer?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) vm.addImageLayer(uri)
+    }
+    OutlinedButton(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
+        Text(stringResource(R.string.layer_add_image))
+    }
     if (layers.isEmpty()) {
         Hint(stringResource(R.string.layers_empty))
         return
@@ -745,6 +772,11 @@ private fun LayersPanel(vm: EditorViewModel, ui: EditorUi) {
             }
         }
     }
+    layers.firstOrNull { it.id == ui.selectedLayerId && it.kind == LayerKind.IMAGE }?.let { img ->
+        val id = img.id
+        LabeledSlider(stringResource(R.string.size), img.size, 40f..512f, { v -> vm.liveLayer(id) { it.copy(size = v) } }, vm::endGesture)
+        LabeledSlider(stringResource(R.string.opacity), img.opacity, 0.1f..1f, { v -> vm.liveLayer(id) { it.copy(opacity = v) } }, vm::endGesture)
+    }
     renaming?.let { l ->
         TextInputDialog(
             title = stringResource(R.string.rename_layer),
@@ -759,6 +791,7 @@ private fun LayersPanel(vm: EditorViewModel, ui: EditorUi) {
 private fun layerTitle(l: Layer): String = when {
     l.name.isNotBlank() -> l.name
     l.kind == LayerKind.TEXT -> l.text.replace('\n', ' ').take(24).ifBlank { "T" }
+    l.kind == LayerKind.IMAGE -> "🖼"
     else -> shapeGlyph(l.shape)
 }
 

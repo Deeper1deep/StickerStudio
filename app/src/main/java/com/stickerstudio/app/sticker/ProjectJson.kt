@@ -45,16 +45,17 @@ object ProjectJson {
                     "name" to l.name, "visible" to l.visible, "locked" to l.locked, "opacity" to l.opacity,
                     "align" to l.align, "letterSpacing" to l.letterSpacing, "lineSpacing" to l.lineSpacing,
                     "bgEnabled" to l.bgEnabled, "bgColor" to l.bgColor,
+                    "hollow" to l.hollow, "imageFile" to l.imageFile,
                 )
             },
             "pen" to p.pen.map {
-                linkedMapOf<String, Any?>("color" to it.color, "width" to it.width, "points" to it.points)
+                linkedMapOf<String, Any?>("color" to it.color, "width" to it.width, "points" to it.points, "alpha" to it.alpha)
             },
             "crop" to cropMap(p.crop),
             "adjust" to linkedMapOf<String, Any?>(
                 "brightness" to p.adjust.brightness, "contrast" to p.adjust.contrast,
                 "saturation" to p.adjust.saturation, "warmth" to p.adjust.warmth,
-                "exposure" to p.adjust.exposure, "blur" to p.adjust.blur,
+                "exposure" to p.adjust.exposure, "blur" to p.adjust.blur, "sharpen" to p.adjust.sharpen,
                 "grayscale" to p.adjust.grayscale, "sepia" to p.adjust.sepia,
             ),
         )
@@ -129,11 +130,13 @@ object ProjectJson {
                     lineSpacing = m.optFloat("lineSpacing", 1.2f).coerceIn(0.6f, 3f),
                     bgEnabled = m.optBool("bgEnabled", false),
                     bgColor = m.optInt("bgColor", Colors.BLACK),
+                    hollow = m.optBool("hollow", false),
+                    imageFile = m.optString("imageFile") ?: "",
                 )
             },
             pen = root["pen"].asArray().orEmpty().mapNotNull { e ->
                 val m = e.asObject() ?: return@mapNotNull null
-                PenStroke(m.optInt("color", Colors.BLACK), m.optFloat("width", 8f), floats(m["points"]))
+                PenStroke(m.optInt("color", Colors.BLACK), m.optFloat("width", 8f), floats(m["points"]), m.optFloat("alpha", 1f).coerceIn(0.05f, 1f))
             },
             crop = decodeCrop(root["crop"].asObject()),
             adjust = root["adjust"].asObject().let { a ->
@@ -144,6 +147,7 @@ object ProjectJson {
                     warmth = a.optFloat("warmth", 0f).coerceIn(-1f, 1f),
                     exposure = a.optFloat("exposure", 0f).coerceIn(-1f, 1f),
                     blur = a.optFloat("blur", 0f).coerceIn(0f, 1f),
+                    sharpen = a.optFloat("sharpen", 0f).coerceIn(0f, 1f),
                     grayscale = a.optBool("grayscale", false),
                     sepia = a.optBool("sepia", false),
                 )

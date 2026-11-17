@@ -13,6 +13,7 @@
     <string name="adjust_reset">إعادة ضبط التعديلات</string>
     <string name="adjust_saturation">التشبع</string>
     <string name="adjust_sepia">سيبيا</string>
+    <string name="adjust_sharpen">حدّة</string>
     <string name="adjust_title">تعديل الصورة</string>
     <string name="adjust_warmth">درجة حرارة الألوان</string>
     <string name="align_center">وسط</string>
@@ -110,6 +111,7 @@
     <string name="emoji_custom">إيموجي مخصص</string>
     <string name="emoji_selected">إيموجي</string>
     <string name="eraser">ممحاة</string>
+    <string name="err_image_open">تعذر فتح هذه الصورة.</string>
     <string name="err_load_failed">تعذر فتح هذا الملف.</string>
     <string name="err_memory">لا توجد ذاكرة كافية لهذه الصورة.</string>
     <string name="err_mixed">لا يمكن وضع ملصق ثابت ومتحرك في نفس الحزمة.</string>
@@ -185,9 +187,11 @@
     <string name="lang_ar">العربية</string>
     <string name="lang_en">English</string>
     <string name="lang_system">حسب النظام</string>
+    <string name="layer_add_image">إضافة صورة كطبقة</string>
     <string name="layer_backward">إرجاع للخلف</string>
     <string name="layer_forward">تقديم للأمام</string>
     <string name="layer_hide">إخفاء الطبقة</string>
+    <string name="layer_image_limit">تقدر تضيف لحد 8 صور.</string>
     <string name="layer_lock">قفل الطبقة</string>
     <string name="layer_name">اسم الطبقة</string>
     <string name="layer_show">إظهار الطبقة</string>
@@ -235,6 +239,7 @@
     <string name="packs_empty_title">لا توجد حزم بعد</string>
     <string name="packs_total">%1$d حزمة</string>
     <string name="pen_color">لون القلم</string>
+    <string name="pen_opacity">شفافية القلم</string>
     <string name="preview">معاينة</string>
     <string name="redo">إعادة</string>
     <string name="rename">إعادة تسمية</string>
@@ -262,6 +267,7 @@
     <string name="settings_updates">التحديثات</string>
     <string name="settings_version">الإصدار %1$s (%2$d)</string>
     <string name="shadow">ظل</string>
+    <string name="shape_hollow">إطار فقط</string>
     <string name="share_app">مشاركة التطبيق (QR)</string>
     <string name="share_app_text">Sticker Studio - اصنع استيكرات واتساب: %1$s</string>
     <string name="share_pack">مشاركة</string>
@@ -332,7 +338,7 @@
     <string name="wa_cancelled">لم تتم إضافة شيء إلى واتساب.</string>
     <string name="wa_not_installed">واتساب غير مثبت على هذا الجهاز.</string>
     <string name="wa_rejected">رفض واتساب الحزمة:</string>
-    <string name="whats_new_body">• المحرر المتحرك: شريط إطارات لحذف وتكرار وترتيب الإطارات وضبط مدة كل إطار والسرعة والتراجع والإعادة\n• تعديل الاستيكر المتحرك مرة تانية من الحزمة\n• تبويب الطبقات وخيارات النص وتعديل الصورة في المحرر الثابت</string>
+    <string name="whats_new_body">• المحرر الثابت: إضافة صور كطبقات، حدّة، خطوط وأسهم، أشكال بإطار فقط، شفافية القلم، خطوط محاذاة للمنتصف\n• المحرر المتحرك: شريط إطارات للحذف والتكرار والترتيب ومدة كل إطار\n• تبويب الطبقات وخيارات النص وتعديل الصورة</string>
     <string name="whats_new_title">ما الجديد في %1$s</string>
     <string name="whatsapp">واتساب</string>
     <string name="whatsapp_business">واتساب للأعمال</string>

@@ -13,6 +13,7 @@
     <string name="adjust_reset">Reset adjustments</string>
     <string name="adjust_saturation">Saturation</string>
     <string name="adjust_sepia">Sepia</string>
+    <string name="adjust_sharpen">Sharpen</string>
     <string name="adjust_title">Picture adjustments</string>
     <string name="adjust_warmth">Warmth</string>
     <string name="align_center">Center</string>
@@ -110,6 +111,7 @@
     <string name="emoji_custom">Custom emoji</string>
     <string name="emoji_selected">Emoji</string>
     <string name="eraser">Eraser</string>
+    <string name="err_image_open">Could not open this picture.</string>
     <string name="err_load_failed">Could not open this file.</string>
     <string name="err_memory">Not enough memory for this picture.</string>
     <string name="err_mixed">Static and animated stickers cannot share a pack.</string>
@@ -185,9 +187,11 @@
     <string name="lang_ar">العربية</string>
     <string name="lang_en">English</string>
     <string name="lang_system">Follow system</string>
+    <string name="layer_add_image">Add picture layer</string>
     <string name="layer_backward">Send backward</string>
     <string name="layer_forward">Bring forward</string>
     <string name="layer_hide">Hide layer</string>
+    <string name="layer_image_limit">You can add up to 8 pictures.</string>
     <string name="layer_lock">Lock layer</string>
     <string name="layer_name">Layer name</string>
     <string name="layer_show">Show layer</string>
@@ -235,6 +239,7 @@
     <string name="packs_empty_title">No packs yet</string>
     <string name="packs_total">%1$d packs</string>
     <string name="pen_color">Pen colour</string>
+    <string name="pen_opacity">Pen opacity</string>
     <string name="preview">Preview</string>
     <string name="redo">Redo</string>
     <string name="rename">Rename</string>
@@ -262,6 +267,7 @@
     <string name="settings_updates">Updates</string>
     <string name="settings_version">Version %1$s (%2$d)</string>
     <string name="shadow">Shadow</string>
+    <string name="shape_hollow">Outline only</string>
     <string name="share_app">Share app (QR)</string>
     <string name="share_app_text">Sticker Studio - make WhatsApp stickers: %1$s</string>
     <string name="share_pack">Share</string>
@@ -332,7 +338,7 @@
     <string name="wa_cancelled">Nothing was added to WhatsApp.</string>
     <string name="wa_not_installed">WhatsApp is not installed on this device.</string>
     <string name="wa_rejected">WhatsApp rejected the pack:</string>
-    <string name="whats_new_body">• Animated editor: frame strip to delete, duplicate and reorder frames, set each frame length, speed, undo/redo\n• Edit an animated sticker again from the pack\n• Layers tab, text options and picture adjustments in the static editor</string>
+    <string name="whats_new_body">• Static editor: add pictures as layers, sharpen, lines and arrows, outline-only shapes, pen opacity, snap-to-centre guides\n• Animated editor: frame strip with delete, duplicate, reorder and per-frame length\n• Layers tab, text options and picture adjustments</string>
     <string name="whats_new_title">What is new in %1$s</string>
     <string name="whatsapp">WhatsApp</string>
     <string name="whatsapp_business">WhatsApp Business</string>

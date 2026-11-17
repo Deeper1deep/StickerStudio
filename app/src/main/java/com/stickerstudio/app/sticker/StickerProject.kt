@@ -13,8 +13,8 @@ object Colors {
 }
 
 enum class MaskKind { NONE, CIRCLE, ROUNDED }
-enum class LayerKind { TEXT, SHAPE }
-enum class ShapeKind { CIRCLE, RECT, STAR, HEART }
+enum class LayerKind { TEXT, SHAPE, IMAGE }
+enum class ShapeKind { CIRCLE, RECT, STAR, HEART, LINE, ARROW }
 
 /** Crop rectangle as fractions (0..1) of the source image: left, top, right, bottom. */
 data class CropRect(
@@ -42,7 +42,7 @@ data class OutlineSpec(
 )
 
 /** Freehand pen stroke. [points] = x0,y0,x1,y1,... */
-data class PenStroke(val color: Int, val width: Float, val points: List<Float>)
+data class PenStroke(val color: Int, val width: Float, val points: List<Float>, val alpha: Float = 1f)
 
 /** Eraser (or "restore") brush stroke applied on the transformed image. */
 data class EraseStroke(val restore: Boolean, val radius: Float, val points: List<Float>)
@@ -78,6 +78,10 @@ data class Layer(
     val lineSpacing: Float = 1.2f,
     val bgEnabled: Boolean = false,
     val bgColor: Int = Colors.BLACK,
+    /** Shape only: draw just the outline (in [color]) instead of a filled shape. Lines and arrows are always outlines. */
+    val hollow: Boolean = false,
+    /** Image layer only: file name inside the app's sources folder. */
+    val imageFile: String = "",
 )
 
 /**
@@ -91,6 +95,7 @@ data class Adjust(
     val warmth: Float = 0f,       // -1 (cool) .. 1 (warm)
     val exposure: Float = 0f,     // -1..1
     val blur: Float = 0f,         // 0..1
+    val sharpen: Float = 0f,      // 0..1
     val grayscale: Boolean = false,
     val sepia: Boolean = false,
 ) {
