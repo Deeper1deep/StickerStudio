@@ -402,4 +402,12 @@
     <string name="whatsapp_business">واتساب للأعمال</string>
     <string name="zip_done">تم حفظ ملف الحزمة (wastickers).</string>
     <string name="zip_failed">تعذر حفظ ملف الحزمة.</string>
+    <!-- التقسيم عند التصدير (الحزم المستوردة فوق حد واتساب 30 ملصق) -->
+    <string name="split_offer_title">عدد الملصقات أكبر من حد حزمة واتساب</string>
+    <string name="split_offer_message">الحزمة دي فيها %1$d ملصق، وواتساب يقبل 30 كحد أقصى في الحزمة الواحدة. تتضاف كـ %2$d حزمة بنفس الترتيب؟ الحزمة هنا هتفضل واحدة زي ما هي.</string>
+    <string name="split_offer_confirm">إضافة كـ %1$d حزمة</string>
+    <string name="split_done">اتضافت للواتساب</string>
+    <string name="split_done_detail">اتضافت %1$d من %2$d حزمة.</string>
+    <string name="split_stopped">الإضافة اتوقفت</string>
+    <string name="split_stopped_detail">الجزء %1$d من %2$d مااتضافش. الأجزاء اللي اتأكدت قبل كده هتفضل في واتساب.</string>
 </resources>
