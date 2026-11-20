@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -177,7 +178,28 @@ fun AppRoot() {
         )
     }
 
-    Scaffold { padding ->
+    // Two independent top-level sections: Home (create + packs) and Export stickers.
+    val showNav = current == Routes.HOME || current == Routes.EXPORT
+    Scaffold(
+        bottomBar = {
+            if (showNav) {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = current == Routes.HOME,
+                        onClick = { if (current != Routes.HOME) nav.popBackStack(Routes.HOME, false) },
+                        icon = { Icon(androidx.compose.material.icons.Icons.Filled.Home, null) },
+                        label = { Text(stringResource(R.string.nav_home)) },
+                    )
+                    NavigationBarItem(
+                        selected = current == Routes.EXPORT,
+                        onClick = { if (current != Routes.EXPORT) nav.navigate(Routes.EXPORT) { launchSingleTop = true } },
+                        icon = { Icon(androidx.compose.material.icons.Icons.Filled.IosShare, null) },
+                        label = { Text(stringResource(R.string.export_title), maxLines = 1) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
         NavHost(nav, startDestination = Routes.HOME, modifier = Modifier.padding(padding)) {
             composable(Routes.HOME) {
                 HomeScreen(
@@ -188,12 +210,11 @@ fun AppRoot() {
                     onOpenDraft = { nav.navigate(Routes.editor(draft = it)) },
                     onOpenSettings = { nav.navigate(Routes.SETTINGS) },
                     onOpenUpdates = { nav.navigate(Routes.UPDATES) },
-                    onOpenExport = { nav.navigate(Routes.EXPORT) },
                 )
             }
             composable(Routes.SETTINGS) { SettingsScreen(onBack = { nav.popBackStack() }, onOpenUpdates = { nav.navigate(Routes.UPDATES) }) }
             composable(Routes.UPDATES) { UpdatesScreen(onBack = { nav.popBackStack() }) }
-            composable(Routes.EXPORT) { com.stickerstudio.app.ui.screens.ExportScreen(onBack = { nav.popBackStack() }, onGoPacks = { nav.popBackStack() }) }
+            composable(Routes.EXPORT) { com.stickerstudio.app.ui.screens.ExportScreen(onGoPacks = { nav.popBackStack(Routes.HOME, false) }) }
             composable(
                 Routes.PACK,
                 arguments = listOf(navArgument("packId") { type = NavType.StringType }),

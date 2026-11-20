@@ -66,7 +66,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /** A separate section: pick packs, order them, and send them to WhatsApp one after another. */
 @Composable
-fun ExportScreen(onBack: () -> Unit, onGoPacks: () -> Unit) {
+fun ExportScreen(onGoPacks: () -> Unit) {
     val vm: ExportViewModel = viewModel()
     val ui by vm.ui.collectAsState()
     val launchRequest by vm.launch.collectAsState()
@@ -121,7 +121,7 @@ fun ExportScreen(onBack: () -> Unit, onGoPacks: () -> Unit) {
         ) {
             item(key = "header") {
                 Column {
-                    ScreenHeader(stringResource(R.string.export_title), onBack = onBack)
+                    ScreenHeader(stringResource(R.string.export_title))
                     Text(
                         stringResource(R.string.export_desc),
                         style = MaterialTheme.typography.bodyMedium,

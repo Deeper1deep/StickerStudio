@@ -2,7 +2,7 @@
 
 ## 1.0.39 - Export section
 
-- New **Export stickers** entry on the home screen opening its own screen (separate from packs and editors).
+- New **Export stickers** section with its own entry in the bottom navigation bar (next to Home), a screen of its own, and its own selection / order / run state. Nothing about export appears in the packs list, pack screen, save-to-pack or the editors (guarded by a unit test).
 - Tick several of your packs; the app remembers the **order you ticked them in** (not the list order). Un-tick and tick again = goes to the end.
 - **Export order** list with numbers, drag-and-drop handle and a remove button (removing never deletes the pack).
 - "Export N packs to WhatsApp" sends the packs one by one through WhatsApp's official add-pack screen. WhatsApp always asks the user to confirm each pack, so the app moves to the next pack when you come back. A pack counts as **added only if WhatsApp confirms it**; backing out is shown as failed, never as success.
