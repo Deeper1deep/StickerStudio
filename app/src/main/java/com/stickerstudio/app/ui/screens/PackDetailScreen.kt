@@ -73,7 +73,9 @@ import com.stickerstudio.app.R
 import com.stickerstudio.app.container
 import com.stickerstudio.app.data.PackEntity
 import com.stickerstudio.app.data.PackRepository
+import com.stickerstudio.app.data.PackSource
 import com.stickerstudio.app.data.StickerEntity
+import com.stickerstudio.app.data.packSource
 import com.stickerstudio.app.ui.ImportReport
 import com.stickerstudio.app.ui.PackActionsDialogs
 import com.stickerstudio.app.ui.StickerImport
@@ -243,7 +245,9 @@ fun PackDetailScreen(
         },
     ) { padding ->
         val p = pack
-        val freeSlots = (30 - visible.size).coerceAtLeast(0)
+        val imported = p?.packSource == PackSource.IMPORTED
+        // Created packs fill towards WhatsApp's 30; imported packs always offer a few add slots.
+        val freeSlots = if (imported) 3 else (30 - visible.size).coerceAtLeast(0)
         val gridState = rememberLazyGridState()
         val reorderState = rememberReorderableLazyGridState(gridState) { from, to ->
             val list = order.toMutableList()
@@ -267,7 +271,9 @@ fun PackDetailScreen(
                     Column {
             Row(Modifier.padding(horizontal = 0.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 StatusPill(
-                    stringResource(R.string.pack_status, visible.size, 30),
+                    // Imported packs show their real count; the 30 cap is WhatsApp's, not ours.
+                    if (imported) stringResource(R.string.pack_count, visible.size)
+                    else stringResource(R.string.pack_status, visible.size, 30),
                     MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 Text(p.publisher, Modifier.padding(start = 10.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
