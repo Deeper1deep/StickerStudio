@@ -402,4 +402,12 @@
     <string name="whatsapp_business">WhatsApp Business</string>
     <string name="zip_done">Pack file saved (.wastickers).</string>
     <string name="zip_failed">Could not save the pack file.</string>
+    <!-- split at export (imported packs over WhatsApp's 30-sticker limit) -->
+    <string name="split_offer_title">Too many stickers for one WhatsApp pack</string>
+    <string name="split_offer_message">This pack has %1$d stickers; WhatsApp takes up to 30 per pack. Add it as %2$d packs, in the same order? The pack here stays as one.</string>
+    <string name="split_offer_confirm">Add as %1$d packs</string>
+    <string name="split_done">Added to WhatsApp</string>
+    <string name="split_done_detail">%1$d of %2$d packs added.</string>
+    <string name="split_stopped">Adding stopped</string>
+    <string name="split_stopped_detail">Part %1$d of %2$d was not added. Parts already confirmed stay in WhatsApp.</string>
 </resources>
