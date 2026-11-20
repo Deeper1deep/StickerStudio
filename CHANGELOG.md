@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased - import keeps every sticker of the file
+
+- Animated stickers that miss WhatsApp's export spec (not 512x512, or over 500 KB) are no longer dropped during import: the file is kept whole in the Imported packs section, and the export validator reports any out-of-spec sticker honestly when the pack is actually sent to WhatsApp.
+- Packs whose file mixes WebP stickers with plain pictures (png / jpg) now import every entry in the file's own order; the pictures were silently ignored before whenever any WebP existed.
+- Archive entries beyond the 12 MB per-file safety cap are counted and reported as skipped instead of disappearing silently.
+- The whole-archive safety cap grew from 64 MB to 256 MB, so a large animated pack imports instead of failing with a generic "invalid pack" error.
+
 ## Unreleased - split imported packs at export
 
 - Adding an imported pack with more than 30 stickers to WhatsApp now offers **"Add as N packs"**: the pack is sent as temporary WhatsApp packs of at most 30 stickers each ("Name (1/2)", "Name (2/2)"...), with the same tray icon and the original sticker order. The pack inside the app is never split, renamed or reordered, and nothing is written to the database for the parts.
