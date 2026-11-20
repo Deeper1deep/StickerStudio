@@ -46,6 +46,12 @@ class PackImportResult(
  * is not applied here; storage is only bounded by [PackSourceRules.IMPORTED_MAX_STICKERS]. The
  * original file is never modified and the pack is never split into several packs.
  *
+ * Stickers are stored even when they miss WhatsApp's export spec (size or dimensions):
+ * keeping the file whole matters more here, and the export validator reports any out-of-spec
+ * sticker honestly when the pack is actually sent to WhatsApp. Packs mixing WebP stickers and
+ * plain pictures import every entry in the file's order. Archive entries beyond the reader's
+ * per-file safety cap are counted in [PackImportResult.skipped].
+ *
  * With [replacePackId] the given imported pack is refreshed in place (re-import / update):
  * same pack id, no copy. A pack created inside the app is never touched through this path.
  */
@@ -72,7 +78,9 @@ object PackFileImport {
             return@withContext PackImportResult(null, 0, 0, R.string.err_memory)
         } ?: return@withContext PackImportResult(null, 0, 0, R.string.import_pack_invalid)
 
-        val items = archive.webps.ifEmpty { archive.images }
+        // WebP stickers and plain pictures together, in the file's own order: nothing is
+        // left behind just because the pack mixes formats.
+        val items = archive.stickers
         if (items.isEmpty()) return@withContext PackImportResult(null, 0, 0, R.string.import_pack_invalid)
 
         val fingerprint = PackArchive.fingerprint(archive)
@@ -91,8 +99,9 @@ object PackFileImport {
         }
 
         // Decode everything first: a file that cannot be read changes nothing.
+        // Oversized archive entries were dropped by the reader; they count as skipped, never vanish.
         val prepared = ArrayList<Prepared>(items.size)
-        var skipped = 0
+        var skipped = archive.skippedOversized
         for (item in items) {
             if (prepared.size >= PackSourceRules.IMPORTED_MAX_STICKERS) {
                 skipped += items.size - prepared.size
@@ -156,27 +165,48 @@ object PackFileImport {
         PackImportResult(packId, added, skipped, null, updated = updated)
     }
 
-    /** Decodes one archive entry into a storable sticker. Valid WhatsApp WebP files are kept byte for byte. */
+    /**
+     * Decodes one archive entry into a storable sticker. Nothing that is really a WebP or a
+     * decodable picture is ever dropped: valid WhatsApp WebP files are kept byte for byte,
+     * out-of-spec WebP files (wrong size, too big for WhatsApp) are kept too - the export
+     * validator reports them honestly instead of the import silently losing them - and plain
+     * pictures are fitted into proper stickers.
+     */
     private fun prepare(context: Context, item: ArchiveSticker): Prepared? {
         val repo = context.container.repository
         val emojis = item.emojis ?: "😀"
         val info = WebpParser.parse(item.bytes)
 
         if (info != null) {
-            val limit = if (info.animated) WhatsAppLimits.MAX_ANIMATED_BYTES else WhatsAppLimits.MAX_STATIC_BYTES
-            val ok = info.width == WhatsAppLimits.STICKER_SIZE && info.height == WhatsAppLimits.STICKER_SIZE && item.bytes.size <= limit
-            if (ok) {
-                if (info.animated) {
-                    return Prepared(item.bytes, true, emojis, null, null)
-                }
-                // keep an editable copy of the picture so the sticker can be edited later
-                val source = BitmapFactory.decodeByteArray(item.bytes, 0, item.bytes.size)
-                val sourceName = source?.let { BitmapLoader.savePng(repo.paths.sources, it).also { _ -> it.recycle() } }
-                return Prepared(item.bytes, false, emojis, sourceName, sourceName?.let { ProjectJson.encode(StickerProject()) })
+            // Animated stickers are always kept byte for byte.
+            if (info.animated) {
+                return Prepared(item.bytes, true, emojis, null, null)
             }
-            if (info.animated) return null   // an out-of-spec animation cannot be fixed here
+            val inSpec = info.width == WhatsAppLimits.STICKER_SIZE && info.height == WhatsAppLimits.STICKER_SIZE &&
+                item.bytes.size <= WhatsAppLimits.MAX_STATIC_BYTES
+            val source = BitmapFactory.decodeByteArray(item.bytes, 0, item.bytes.size)
+            if (source != null) {
+                if (inSpec) {
+                    // keep an editable copy of the picture so the sticker can be edited later
+                    val sourceName = BitmapLoader.savePng(repo.paths.sources, source).also { source.recycle() }
+                    return Prepared(item.bytes, false, emojis, sourceName, ProjectJson.encode(StickerProject()))
+                }
+                // a static WebP that is not 512x512 / too big: fit it into a proper sticker
+                val rendered = StickerRenderer.render(StickerProject(), source)
+                val webp = StickerEncoder.encodeStatic(rendered)
+                rendered.recycle()
+                if (webp != null) {
+                    val sourceName = BitmapLoader.savePng(repo.paths.sources, source)
+                    source.recycle()
+                    return Prepared(webp, false, emojis, sourceName, ProjectJson.encode(StickerProject()))
+                }
+                source.recycle()
+            }
+            // undecodable or unfixable: keep the original WebP instead of dropping the sticker
+            return Prepared(item.bytes, false, emojis, null, null)
         }
-        // A picture, or a static WebP that is not 512x512 / too big: fit it into a proper sticker.
+
+        // Not a WebP: a plain picture gets fitted into a proper sticker.
         val source = BitmapFactory.decodeByteArray(item.bytes, 0, item.bytes.size) ?: return null
         val rendered = StickerRenderer.render(StickerProject(), source)
         val webp = StickerEncoder.encodeStatic(rendered)

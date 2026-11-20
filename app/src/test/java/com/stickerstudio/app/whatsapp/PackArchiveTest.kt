@@ -11,11 +11,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PackArchiveTest {
-    private fun zip(vararg files: Pair<String, String>): ByteArray {
+    private fun zip(vararg files: Pair<String, String>): ByteArray =
+        zipBytes(*files.map { (n, c) -> n to c.toByteArray() }.toTypedArray())
+
+    private fun zipBytes(vararg files: Pair<String, ByteArray>): ByteArray {
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { z ->
             for ((name, content) in files) {
-                z.putNextEntry(ZipEntry(name)); z.write(content.toByteArray()); z.closeEntry()
+                z.putNextEntry(ZipEntry(name)); z.write(content); z.closeEntry()
             }
         }
         return out.toByteArray()
@@ -68,6 +71,31 @@ class PackArchiveTest {
         // ZipInputStream yields no entries for random bytes: the result is simply empty
         val p = read(ByteArray(100) { 7 })
         assertTrue(p.webps.isEmpty() && p.images.isEmpty())
+    }
+
+    @Test fun mixedPackKeepsWebpsAndPicturesInOrder() {
+        val json = """{"name":"M","stickers":[{"file":"a.webp"},{"file":"b.png"},{"file":"c.webp"}]}"""
+        val p = read(zip("c.webp" to "3", "b.png" to "2", "a.webp" to "1", "contents.json" to json))
+        assertEquals(listOf("a.webp", "c.webp"), p.webps.map { it.name })
+        assertEquals(listOf("b.png"), p.images.map { it.name })
+        assertEquals(listOf("a.webp", "b.png", "c.webp"), p.stickers.map { it.name })
+    }
+
+    @Test fun oversizedStickerEntriesAreCountedNotSilent() {
+        val big = ByteArray(PackArchive.MAX_ENTRY_BYTES + 1) { 1 }
+        val p = read(zipBytes(
+            "title.txt" to "T".toByteArray(),
+            "1.webp" to "a".toByteArray(),
+            "2.webp" to big,
+            "3.webp" to "c".toByteArray(),
+        ))
+        assertEquals(listOf("1.webp", "3.webp"), p.webps.map { it.name })
+        assertEquals(1, p.skippedOversized)
+    }
+
+    @Test fun totalCapFitsLargeAnimatedPacks() {
+        // a 60-sticker animated pack easily exceeds the old 64 MB whole-archive cap
+        assertTrue(PackArchive.MAX_TOTAL_BYTES >= 128L * 1024 * 1024)
     }
 
     @Test fun tooManyEntriesFails() {
