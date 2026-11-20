@@ -35,11 +35,15 @@ object WhatsAppIntegration {
 
     /** The official intent that asks WhatsApp to add a pack served by our content provider. */
     fun enableIntent(context: Context, pack: PackEntity, targetPackage: String): Intent =
+        enableIntent(context, pack.id, pack.name, targetPackage)
+
+    /** Same intent for a temporary split part ([EphemeralPacks]) that is not a stored pack. */
+    fun enableIntent(context: Context, id: String, name: String, targetPackage: String): Intent =
         Intent(ACTION_ENABLE)
             .setPackage(targetPackage)
-            .putExtra("sticker_pack_id", pack.id)
+            .putExtra("sticker_pack_id", id)
             .putExtra("sticker_pack_authority", StickerContentProvider.authorityFor(context.packageName))
-            .putExtra("sticker_pack_name", pack.name)
+            .putExtra("sticker_pack_name", name)
 
     /** True if the pack is already added in [targetPackage]; false when unknown or on any error. */
     fun isPackAdded(context: Context, targetPackage: String, packId: String): Boolean {
