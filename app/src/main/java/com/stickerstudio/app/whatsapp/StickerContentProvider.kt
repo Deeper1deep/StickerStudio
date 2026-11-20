@@ -43,8 +43,16 @@ class StickerContentProvider : ContentProvider() {
         val dao = AppDatabase.get(requireNotNull(context)).dao()
         return when (matcher.match(uri)) {
             CODE_METADATA -> packsCursor(uri, dao.allPacks().filter { dao.stickersOf(it.id).isNotEmpty() })
-            CODE_METADATA_SINGLE -> packsCursor(uri, listOfNotNull(dao.findPack(uri.lastPathSegment ?: "")))
-            CODE_STICKERS -> stickersCursor(uri, dao.stickersOf(uri.lastPathSegment ?: ""))
+            CODE_METADATA_SINGLE -> {
+                val id = uri.lastPathSegment ?: ""
+                val part = EphemeralPacks.get(id)
+                if (part != null) partCursor(uri, part) else packsCursor(uri, listOfNotNull(dao.findPack(id)))
+            }
+            CODE_STICKERS -> {
+                val id = uri.lastPathSegment ?: ""
+                val part = EphemeralPacks.get(id)
+                stickersCursor(uri, part?.stickers ?: dao.stickersOf(id))
+            }
             else -> throw IllegalArgumentException("Unknown URI: $uri")
         }
     }
@@ -79,6 +87,35 @@ class StickerContentProvider : ContentProvider() {
         return cursor
     }
 
+    /** Metadata row for one temporary split part (same column contract as [packsCursor]). */
+    private fun partCursor(uri: Uri, part: EphemeralPacks.Part): Cursor {
+        val cursor = MatrixCursor(
+            arrayOf(
+                "sticker_pack_identifier", "sticker_pack_name", "sticker_pack_publisher", "sticker_pack_icon",
+                "android_play_store_link", "ios_app_download_link", "sticker_pack_publisher_email",
+                "sticker_pack_publisher_website", "sticker_pack_privacy_policy_website",
+                "sticker_pack_license_agreement_website", "image_data_version",
+                "whatsapp_will_not_cache_stickers", "animated_sticker_pack",
+            )
+        )
+        cursor.newRow()
+            .add(part.id)
+            .add(part.name)
+            .add(part.publisher)
+            .add(part.trayName)
+            .add("")
+            .add("")
+            .add("")
+            .add("")
+            .add("")
+            .add("")
+            .add(part.imageDataVersion.toString())
+            .add(0)
+            .add(if (part.animated) 1 else 0)
+        cursor.setNotificationUri(requireNotNull(context).contentResolver, uri)
+        return cursor
+    }
+
     private fun stickersCursor(uri: Uri, stickers: List<StickerEntity>): Cursor {
         val cursor = MatrixCursor(arrayOf("sticker_file_name", "sticker_emoji", "sticker_accessibility_text"))
         for (s in stickers) cursor.addRow(arrayOf<Any>(s.fileName, s.emojis, ""))
@@ -95,6 +132,27 @@ class StickerContentProvider : ContentProvider() {
 
         val ctx = requireNotNull(context)
         val packsRoot = File(ctx.filesDir, "packs").canonicalFile
+
+        // Temporary split part: serve the ORIGINAL pack's files, resolved in place.
+        val part = EphemeralPacks.get(packId)
+        if (part != null) {
+            val partDir = part.dir.canonicalFile
+            val partFile = if (name == part.trayName && part.tray != null) {
+                part.tray.canonicalFile
+            } else {
+                File(partDir, name).canonicalFile
+            }
+            if (!partFile.path.startsWith(partDir.path + File.separator)) {
+                throw FileNotFoundException("Illegal path")
+            }
+            if (!partFile.isFile) throw FileNotFoundException("No such sticker file")
+            val sticker = part.stickers.firstOrNull { it.fileName == name }
+            val served = if (sticker != null) ExportFiles.resolve(partDir, sticker, part.animated) else partFile
+            return AssetFileDescriptor(
+                ParcelFileDescriptor.open(served, ParcelFileDescriptor.MODE_READ_ONLY), 0L, AssetFileDescriptor.UNKNOWN_LENGTH,
+            )
+        }
+
         val file = File(File(packsRoot, packId), name).canonicalFile
         // Path traversal guard: the resolved file must stay inside filesDir/packs/<packId>.
         if (!file.path.startsWith(File(packsRoot, packId).canonicalPath + File.separator)) {
