@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * ### Schema changes (read before editing entities)
@@ -17,7 +18,7 @@ import androidx.room.migration.Migration
  */
 @Database(
     entities = [PackEntity::class, StickerEntity::class, DraftEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,8 +28,20 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         const val NAME = "sticker_studio.db"
 
-        /** Add future migrations here (version 1 is the first release, nothing to migrate yet). */
-        val MIGRATIONS: Array<Migration> = arrayOf()
+        /**
+         * 1 → 2: packs learn their [PackSource] and import fingerprint. Existing rows become
+         * UNKNOWN: their source is never guessed, they are not moved between sections and
+         * nothing (ids, stickers, thumbnails, settings) is deleted.
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE packs ADD COLUMN source TEXT NOT NULL DEFAULT 'UNKNOWN'")
+                db.execSQL("ALTER TABLE packs ADD COLUMN importHash TEXT")
+            }
+        }
+
+        /** Add future migrations here; `fallbackToDestructiveMigration` stays forbidden. */
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
 
         @Volatile
         private var instance: AppDatabase? = null
