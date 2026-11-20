@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased - split imported packs at export
+
+- Adding an imported pack with more than 30 stickers to WhatsApp now offers **"Add as N packs"**: the pack is sent as temporary WhatsApp packs of at most 30 stickers each ("Name (1/2)", "Name (2/2)"...), with the same tray icon and the original sticker order. The pack inside the app is never split, renamed or reordered, and nothing is written to the database for the parts.
+- The offer appears only when the sticker count is the single blocker; any other validation problem is still shown honestly and stops the export.
+
 ## 1.0.41 - Imported packs section + full-count import
 
 - New **Imported packs** section with its own entry in the bottom navigation: packs imported from files (.wastickers / .zip) live here, fully separated from "My packs". Each pack shows its thumbnail, name, real sticker count, static/animated badge and import date, with its own options menu (open, rename, re-import / update, delete).
