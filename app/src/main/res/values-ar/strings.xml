@@ -271,7 +271,6 @@
     <string name="outline_width">سمك الحد</string>
     <string name="pack_added_wa">مضافة في واتساب</string>
     <string name="pack_count">%1$d ملصق</string>
-    <string name="pack_count">%1$d ملصق</string>
     <string name="pack_deleted">تم حذف الحزمة \"%1$s\"</string>
     <string name="pack_empty_body">واتساب يحتاج 3 ملصقات على الأقل. أضف صورًا بزر +.</string>
     <string name="pack_empty_title">الحزمة فارغة</string>
