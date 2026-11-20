@@ -271,7 +271,6 @@
     <string name="outline_width">Outline width</string>
     <string name="pack_added_wa">Added to WhatsApp</string>
     <string name="pack_count">%1$d stickers</string>
-    <string name="pack_count">%1$d stickers</string>
     <string name="pack_deleted">Pack \"%1$s\" deleted</string>
     <string name="pack_empty_body">WhatsApp needs at least 3 stickers. Add pictures with the + button.</string>
     <string name="pack_empty_title">This pack is empty</string>
