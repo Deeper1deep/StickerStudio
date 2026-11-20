@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.41 - Imported packs section + full-count import
+
+- New **Imported packs** section with its own entry in the bottom navigation: packs imported from files (.wastickers / .zip) live here, fully separated from "My packs". Each pack shows its thumbnail, name, real sticker count, static/animated badge and import date, with its own options menu (open, rename, re-import / update, delete).
+- Every pack now knows its **source** (created / imported / unknown legacy), stored in the database - never guessed from the pack's name or contents. The migration keeps every existing pack, sticker, thumbnail, name and setting untouched; legacy packs stay where they were.
+- **Import keeps the whole file now**: a pack with 31, 60 or 75 stickers imports completely, in the original order. It was silently cut at 30 before, because the import reused WhatsApp's export limit. Storage and export limits are now separate; WhatsApp's 30-sticker rule is only checked when a pack is actually sent to WhatsApp, and reported honestly.
+- Importing the exact same file twice no longer creates a duplicate pack: the file is fingerprinted and the existing pack is shown instead.
+- Re-import refreshes an imported pack in place (same pack, no copies); the original file is never modified.
+- Not device-tested yet: verified by CI build + unit tests only.
+
 ## 1.0.39 - Export section
 
 - New **Export stickers** section with its own entry in the bottom navigation bar (next to Home), a screen of its own, and its own selection / order / run state. Nothing about export appears in the packs list, pack screen, save-to-pack or the editors (guarded by a unit test).
