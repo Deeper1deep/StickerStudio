@@ -92,7 +92,8 @@ fun HomeScreen(
     val context = LocalContext.current
     val c = context.container
     val scope = rememberCoroutineScope()
-    val packs by c.repository.observePacks().collectAsState(initial = emptyList<PackEntity>())
+    // "My packs" only: packs made in the app (+ legacy ones). Imported packs have their own section.
+    val packs by c.repository.observeCreatedPacks().collectAsState(initial = emptyList<PackEntity>())
     val drafts by c.repository.observeDrafts().collectAsState(initial = emptyList<DraftEntity>())
     val counts by c.repository.observeCounts().collectAsState(initial = emptyList())
     val update by c.updates.state.collectAsState()
@@ -132,7 +133,7 @@ fun HomeScreen(
     var deleting by remember { mutableStateOf<PackEntity?>(null) }
     var importProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var importResults by remember { mutableStateOf<List<PackImportResult>?>(null) }
-    // .wastickers has no registered MIME type, so the picker must accept any file; several can be picked.
+    // Pack files shared from other apps still import from here; they land in the Imported packs section.
     fun runImport(uris: List<android.net.Uri>) {
         if (uris.isEmpty()) return
         scope.launch {
@@ -145,7 +146,6 @@ fun HomeScreen(
             importResults = results
         }
     }
-    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> runImport(uris) }
 
     // Files shared / opened from other apps: packs are imported here, pictures go to the create section.
     val incoming by IncomingShare.pending.collectAsState()
@@ -217,10 +217,6 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(stringResource(R.string.home_my_packs), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = { importPicker.launch(arrayOf("*/*")) }) {
-                    Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
-                    Text(stringResource(R.string.import_pack), Modifier.padding(start = 6.dp))
-                }
                 FilledTonalButton(onClick = { creating = true }) {
                     Icon(Icons.Filled.Add, null, Modifier.size(18.dp))
                     Text(stringResource(R.string.new_pack), Modifier.padding(start = 6.dp))
@@ -293,6 +289,7 @@ fun HomeScreen(
         val first = results.firstOrNull()
         val message = when {
             results.size == 1 && first?.error != null -> stringResource(first.error)
+            results.size == 1 && first != null && first.duplicate -> stringResource(R.string.import_pack_duplicate)
             results.size == 1 && first != null ->
                 stringResource(R.string.import_pack_done, first.added) +
                     if (first.skipped > 0) " " + stringResource(R.string.import_pack_skipped, first.skipped) else ""
