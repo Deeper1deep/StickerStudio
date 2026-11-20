@@ -23,6 +23,10 @@ data class PackEntity(
     val animated: Boolean,
     /** Sent to WhatsApp as image_data_version; must change whenever any image changes. */
     val imageDataVersion: Int,
+    /** Where the pack came from (a [PackSource] name). Stored, never guessed. */
+    val source: String,
+    /** Fingerprint of the file the pack was imported from ([com.stickerstudio.app.whatsapp.PackArchive.fingerprint]); null for packs made in the app. */
+    val importHash: String?,
     val createdAt: Long,
     val updatedAt: Long,
 )
