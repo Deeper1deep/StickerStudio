@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
@@ -88,6 +90,7 @@ fun HomeScreen(
     onOpenDraft: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenUpdates: () -> Unit,
+    onOpenExport: () -> Unit,
 ) {
     val context = LocalContext.current
     val c = context.container
@@ -209,6 +212,23 @@ fun HomeScreen(
                 incoming = sharedMedia,
                 onIncomingHandled = { sharedMedia = null },
             )
+        }
+
+        item(key = "export_entry") {
+            AppCard(onClick = onOpenExport, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Icon(Icons.Filled.IosShare, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(stringResource(R.string.export_title), style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.export_home_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
 
         item(key = "packs_title") {

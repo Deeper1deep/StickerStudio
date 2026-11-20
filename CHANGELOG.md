@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.39 - Export section
+
+- New **Export stickers** entry on the home screen opening its own screen (separate from packs and editors).
+- Tick several of your packs; the app remembers the **order you ticked them in** (not the list order). Un-tick and tick again = goes to the end.
+- **Export order** list with numbers, drag-and-drop handle and a remove button (removing never deletes the pack).
+- "Export N packs to WhatsApp" sends the packs one by one through WhatsApp's official add-pack screen. WhatsApp always asks the user to confirm each pack, so the app moves to the next pack when you come back. A pack counts as **added only if WhatsApp confirms it**; backing out is shown as failed, never as success.
+- Progress screen (pack X of N, added / remaining, per-pack status), pause, cancel, continue, retry and skip. Invalid packs are explained and do not stop the others.
+- The selection order and a running export are saved; after the app is closed the export comes back **paused** and never restarts by itself.
+- Not device-tested yet: verified by CI build + unit tests only.
+
 ## 1.0.38 - static editor: picture layers, sharpen, lines & arrows
 
 - **Picture layers**: add any photo on top of the sticker (Layers tab); move, scale, rotate, fade, reorder and lock it like text. Up to 8 per sticker; stored with the project so it re-opens.

@@ -58,6 +58,7 @@ object Routes {
     const val HOME = "home"
     const val SETTINGS = "settings"
     const val UPDATES = "updates"
+    const val EXPORT = "export"
     const val PACK = "pack/{packId}"
     const val EDITOR = "editor?source={source}&pack={pack}&sticker={sticker}&draft={draft}"
     const val ANIMATED = "animated?pack={pack}&source={source}&video={video}&sticker={sticker}"
@@ -187,10 +188,12 @@ fun AppRoot() {
                     onOpenDraft = { nav.navigate(Routes.editor(draft = it)) },
                     onOpenSettings = { nav.navigate(Routes.SETTINGS) },
                     onOpenUpdates = { nav.navigate(Routes.UPDATES) },
+                    onOpenExport = { nav.navigate(Routes.EXPORT) },
                 )
             }
             composable(Routes.SETTINGS) { SettingsScreen(onBack = { nav.popBackStack() }, onOpenUpdates = { nav.navigate(Routes.UPDATES) }) }
             composable(Routes.UPDATES) { UpdatesScreen(onBack = { nav.popBackStack() }) }
+            composable(Routes.EXPORT) { com.stickerstudio.app.ui.screens.ExportScreen(onBack = { nav.popBackStack() }, onGoPacks = { nav.popBackStack() }) }
             composable(
                 Routes.PACK,
                 arguments = listOf(navArgument("packId") { type = NavType.StringType }),
