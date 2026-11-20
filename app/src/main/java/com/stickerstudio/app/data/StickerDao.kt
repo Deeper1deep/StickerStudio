@@ -18,6 +18,18 @@ interface StickerDao {
     @Query("SELECT * FROM packs ORDER BY updatedAt DESC")
     fun observePacks(): Flow<List<PackEntity>>
 
+    /** "My packs": packs made in the app, plus legacy packs whose source is unknown. */
+    @Query("SELECT * FROM packs WHERE source != 'IMPORTED' ORDER BY updatedAt DESC")
+    fun observeCreatedPacks(): Flow<List<PackEntity>>
+
+    /** "Imported packs": only packs that came from an external file. */
+    @Query("SELECT * FROM packs WHERE source = 'IMPORTED' ORDER BY updatedAt DESC")
+    fun observeImportedPacks(): Flow<List<PackEntity>>
+
+    /** The imported pack that came from this exact file content, if any (duplicate-import guard). */
+    @Query("SELECT * FROM packs WHERE source = 'IMPORTED' AND importHash = :hash LIMIT 1")
+    fun findImportedByHash(hash: String): PackEntity?
+
     @Query("SELECT * FROM packs WHERE id = :id")
     fun observePack(id: String): Flow<PackEntity?>
 
