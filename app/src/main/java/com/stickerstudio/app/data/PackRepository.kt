@@ -34,6 +34,12 @@ class PackRepository(context: Context, db: AppDatabase) {
     val paths = AppPaths(context)
 
     fun observePacks(): Flow<List<PackEntity>> = dao.observePacks()
+
+    /** "My packs": created in the app (+ legacy packs whose source is unknown). */
+    fun observeCreatedPacks(): Flow<List<PackEntity>> = dao.observeCreatedPacks()
+
+    /** "Imported packs": only packs imported from external files. */
+    fun observeImportedPacks(): Flow<List<PackEntity>> = dao.observeImportedPacks()
     fun observePack(id: String): Flow<PackEntity?> = dao.observePack(id)
     fun observeStickers(packId: String): Flow<List<StickerEntity>> = dao.observeStickers(packId)
     fun observeRecent(limit: Int): Flow<List<StickerEntity>> = dao.observeRecent(limit)
@@ -45,17 +51,39 @@ class PackRepository(context: Context, db: AppDatabase) {
 
     // ------------------------------------------------------------------ packs
 
-    suspend fun createPack(name: String, publisher: String): String = withContext(Dispatchers.IO) {
+    suspend fun createPack(
+        name: String,
+        publisher: String,
+        source: PackSource = PackSource.CREATED,
+        importHash: String? = null,
+    ): String = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
         dao.insertPack(
             PackEntity(
                 id = id, name = name.trim(), publisher = publisher.trim(), trayFile = null,
-                trayStickerId = null, animated = false, imageDataVersion = 1, createdAt = now, updatedAt = now,
+                trayStickerId = null, animated = false, imageDataVersion = 1,
+                source = source.name, importHash = importHash, createdAt = now, updatedAt = now,
             )
         )
         paths.packDir(id)
         id
+    }
+
+    /** The imported pack that came from this exact file content, if any (duplicate-import guard). */
+    suspend fun findImportedByHash(hash: String): PackEntity? = withContext(Dispatchers.IO) {
+        dao.findImportedByHash(hash)
+    }
+
+    /** Refreshes name / publisher / fingerprint after a re-import, keeping the pack id and source. */
+    suspend fun updateImportedMeta(id: String, name: String, publisher: String, importHash: String) = withContext(Dispatchers.IO) {
+        val pack = dao.findPack(id) ?: return@withContext
+        dao.updatePack(
+            pack.copy(
+                name = name.trim(), publisher = publisher.trim(), importHash = importHash,
+                imageDataVersion = pack.imageDataVersion + 1, updatedAt = System.currentTimeMillis(),
+            )
+        )
     }
 
     suspend fun updatePackInfo(id: String, name: String, publisher: String) = withContext(Dispatchers.IO) {
@@ -87,8 +115,11 @@ class PackRepository(context: Context, db: AppDatabase) {
     ): StickerEntity = withContext(Dispatchers.IO) {
         val pack = dao.findPack(packId) ?: throw PackRuleException(PackRuleException.Code.PACK_NOT_FOUND)
         val existing = dao.stickersOf(packId)
-        if (existing.size >= WhatsAppLimits.MAX_STICKERS) {
-            throw PackRuleException(PackRuleException.Code.PACK_FULL, WhatsAppLimits.MAX_STICKERS)
+        // WhatsApp's 30-sticker limit applies to packs made for WhatsApp; imported packs keep
+        // every sticker of their file (see PackSourceRules).
+        val limit = PackSourceRules.stickerLimit(pack.packSource)
+        if (existing.size >= limit) {
+            throw PackRuleException(PackRuleException.Code.PACK_FULL, limit)
         }
 
         val id = UUID.randomUUID().toString()
@@ -231,17 +262,19 @@ class PackRepository(context: Context, db: AppDatabase) {
 
     /**
      * Copies stickers into another pack (the image and the editable source are duplicated, so
-     * deleting one copy never affects the other). Returns how many were copied; stops at the 30 limit.
+     * deleting one copy never affects the other). Returns how many were copied; stops at the
+     * target pack's limit (30 for created packs, more for imported ones - see PackSourceRules).
      */
     suspend fun copyStickersToPack(stickerIds: List<String>, targetPackId: String): Int = withContext(Dispatchers.IO) {
         val target = dao.findPack(targetPackId) ?: throw PackRuleException(PackRuleException.Code.PACK_NOT_FOUND)
+        val limit = PackSourceRules.stickerLimit(target.packSource)
         var count = dao.stickersOf(targetPackId).size
         var nextPos = (dao.stickersOf(targetPackId).maxOfOrNull { it.position } ?: -1) + 1
         var copied = 0
         var anyAnimated = false
         val inserts = ArrayList<StickerEntity>()
         for (sid in stickerIds) {
-            if (count >= WhatsAppLimits.MAX_STICKERS) break
+            if (count >= limit) break
             val s = dao.findSticker(sid) ?: continue
             val src = File(paths.packDir(s.packId), s.fileName)
             if (!src.exists()) continue
@@ -283,17 +316,22 @@ class PackRepository(context: Context, db: AppDatabase) {
 
     /** Copy then delete the originals (only the ones that were actually copied). */
     suspend fun moveStickersToPack(stickerIds: List<String>, targetPackId: String): Int {
-        val room = WhatsAppLimits.MAX_STICKERS - stickersOf(targetPackId).size
+        val target = findPack(targetPackId) ?: throw PackRuleException(PackRuleException.Code.PACK_NOT_FOUND)
+        val room = PackSourceRules.stickerLimit(target.packSource) - stickersOf(targetPackId).size
         val ids = stickerIds.take(room.coerceAtLeast(0))
         val copied = copyStickersToPack(ids, targetPackId)
         ids.take(copied).forEach { deleteSticker(it) }
         return copied
     }
 
-    /** Full copy of a pack (stickers, order, emojis and editable sources) named "<name> (copy)". */
+    /**
+     * Full copy of a pack (stickers, order, emojis and editable sources) named "<name> (copy)".
+     * The copy keeps the pack's source (a copy of an imported pack stays imported), but not its
+     * import fingerprint: it is a separate pack that may diverge from the original file.
+     */
     suspend fun duplicatePack(id: String, copySuffix: String): String? = withContext(Dispatchers.IO) {
         val pack = dao.findPack(id) ?: return@withContext null
-        val newId = createPack("${pack.name} $copySuffix", pack.publisher)
+        val newId = createPack("${pack.name} $copySuffix", pack.publisher, source = pack.packSource)
         val ids = dao.stickersOf(id).map { it.id }
         copyStickersToPack(ids, newId)
         // keep the same tray choice when possible
@@ -316,6 +354,30 @@ class PackRepository(context: Context, db: AppDatabase) {
     suspend fun allPacks(): List<PackEntity> = withContext(Dispatchers.IO) { dao.allPacks() }
     suspend fun countStickers(): Map<String, Int> = withContext(Dispatchers.IO) {
         dao.allPacks().associate { it.id to dao.stickersOf(it.id).size }
+    }
+
+    /**
+     * Removes every sticker of the pack (image files and editable sources included) but keeps
+     * the pack itself, its name and its settings. Used by re-import before fresh stickers land.
+     */
+    suspend fun clearStickers(packId: String) = withContext(Dispatchers.IO) {
+        val pack = dao.findPack(packId) ?: return@withContext
+        val stickers = dao.stickersOf(packId)
+        tx {
+            stickers.forEach { dao.deleteSticker(it.id) }
+            dao.updatePack(
+                pack.copy(
+                    animated = false, trayStickerId = null,
+                    imageDataVersion = pack.imageDataVersion + 1, updatedAt = System.currentTimeMillis(),
+                )
+            )
+        }
+        stickers.forEach { s ->
+            File(paths.packDir(packId), s.fileName).delete()
+            File(File(paths.packDir(packId), "anim"), s.fileName).delete()
+            s.sourceFile?.let { paths.source(it).delete() }
+        }
+        refreshTray(packId)
     }
 
     // ------------------------------------------------------------------ drafts

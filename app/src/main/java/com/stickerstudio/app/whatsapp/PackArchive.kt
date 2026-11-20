@@ -1,6 +1,7 @@
 package com.stickerstudio.app.whatsapp
 
 import com.stickerstudio.app.core.MiniJson
+import com.stickerstudio.app.core.Sha256
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -111,6 +112,24 @@ object PackArchive {
         val name = (root["name"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
         val publisher = (root["publisher"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
         return Parsed(name, publisher, out)
+    }
+
+    /**
+     * A stable fingerprint of an archive's real content: title, author, and every sticker's name,
+     * size and bytes in pack order. Two files with the same content produce the same fingerprint,
+     * so importing the same pack twice can be recognised instead of duplicated. Order matters: a
+     * reordered pack is a different pack.
+     */
+    fun fingerprint(pack: ArchivePack): String {
+        val sb = StringBuilder()
+        sb.append(pack.title.orEmpty()).append('\u0000')
+        sb.append(pack.author.orEmpty()).append('\u0000')
+        val items = pack.webps.ifEmpty { pack.images }
+        for (s in items) {
+            sb.append(s.name.lowercase()).append(':').append(s.bytes.size).append(':')
+                .append(Sha256.hex(s.bytes)).append('\u0000')
+        }
+        return Sha256.hex(sb.toString().toByteArray(Charsets.UTF_8))
     }
 
     private fun firstLine(bytes: ByteArray): String? =

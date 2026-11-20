@@ -60,6 +60,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val UPDATES = "updates"
     const val EXPORT = "export"
+    const val IMPORTED = "imported"
     const val PACK = "pack/{packId}"
     const val EDITOR = "editor?source={source}&pack={pack}&sticker={sticker}&draft={draft}"
     const val ANIMATED = "animated?pack={pack}&source={source}&video={video}&sticker={sticker}"
@@ -178,8 +179,8 @@ fun AppRoot() {
         )
     }
 
-    // Two independent top-level sections: Home (create + packs) and Export stickers.
-    val showNav = current == Routes.HOME || current == Routes.EXPORT
+    // Three independent top-level sections: Home (create + my packs), Imported packs, Export.
+    val showNav = current == Routes.HOME || current == Routes.IMPORTED || current == Routes.EXPORT
     Scaffold(
         bottomBar = {
             if (showNav) {
@@ -189,6 +190,12 @@ fun AppRoot() {
                         onClick = { if (current != Routes.HOME) nav.popBackStack(Routes.HOME, false) },
                         icon = { Icon(androidx.compose.material.icons.Icons.Filled.Home, null) },
                         label = { Text(stringResource(R.string.nav_home)) },
+                    )
+                    NavigationBarItem(
+                        selected = current == Routes.IMPORTED,
+                        onClick = { if (current != Routes.IMPORTED) nav.navigate(Routes.IMPORTED) { launchSingleTop = true } },
+                        icon = { Icon(androidx.compose.material.icons.Icons.Outlined.CollectionsBookmark, null) },
+                        label = { Text(stringResource(R.string.nav_imported), maxLines = 1) },
                     )
                     NavigationBarItem(
                         selected = current == Routes.EXPORT,
@@ -215,6 +222,7 @@ fun AppRoot() {
             composable(Routes.SETTINGS) { SettingsScreen(onBack = { nav.popBackStack() }, onOpenUpdates = { nav.navigate(Routes.UPDATES) }) }
             composable(Routes.UPDATES) { UpdatesScreen(onBack = { nav.popBackStack() }) }
             composable(Routes.EXPORT) { com.stickerstudio.app.ui.screens.ExportScreen(onGoPacks = { nav.popBackStack(Routes.HOME, false) }) }
+            composable(Routes.IMPORTED) { com.stickerstudio.app.ui.screens.ImportedPacksScreen(onOpenPack = { nav.navigate(Routes.pack(it)) }) }
             composable(
                 Routes.PACK,
                 arguments = listOf(navArgument("packId") { type = NavType.StringType }),
