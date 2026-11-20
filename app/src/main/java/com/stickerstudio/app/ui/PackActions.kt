@@ -31,8 +31,12 @@ import com.stickerstudio.app.R
 import com.stickerstudio.app.container
 import com.stickerstudio.app.data.PackEntity
 import com.stickerstudio.app.data.PackRepository
+import com.stickerstudio.app.data.PackSource
+import com.stickerstudio.app.data.packSource
+import com.stickerstudio.app.whatsapp.EphemeralPacks
 import com.stickerstudio.app.whatsapp.IssueCode
 import com.stickerstudio.app.whatsapp.PackIssue
+import com.stickerstudio.app.whatsapp.PackSplit
 import com.stickerstudio.app.whatsapp.WaSyncStore
 import com.stickerstudio.app.whatsapp.WhatsAppIntegration
 import kotlinx.coroutines.CoroutineScope
@@ -58,6 +62,17 @@ class PackActionsController(
     private var zipPack: PackEntity? = null
     private var sentPack: PackEntity? = null
 
+    /** A pack that only exceeds WhatsApp's 30-sticker limit, offered to be split at export. */
+    data class SplitOffer(val pack: PackEntity, val stickers: Int, val parts: Int)
+
+    var splitOffer by mutableStateOf<SplitOffer?>(null)
+    var splitChooser by mutableStateOf<List<String>?>(null)
+    private var splitParts: List<EphemeralPacks.Part> = emptyList()
+    private var splitIndex = 0
+    private var splitAdded = 0
+    private var splitTarget: String? = null
+    private var splitActive = false
+
     fun addToWhatsApp(packId: String) {
         scope.launch {
             busy = true
@@ -69,7 +84,16 @@ class PackActionsController(
             val found = WhatsAppIntegration.validate(repo, pack)
             busy = false
             if (found.isNotEmpty()) {
-                issues = found
+                val tooMany = found.firstOrNull { it.code == IssueCode.TOO_MANY_STICKERS }
+                val others = found.filter { it.code != IssueCode.TOO_MANY_STICKERS }
+                // Split is offered only when the count is the single blocker, so other real
+                // problems are never hidden behind it.
+                if (tooMany != null && others.isEmpty() && pack.packSource == PackSource.IMPORTED) {
+                    val count = tooMany.value.toInt()
+                    splitOffer = SplitOffer(pack, count, PackSplit.partCount(count))
+                } else {
+                    issues = found
+                }
                 return@launch
             }
             val targets = WhatsAppIntegration.installedTargets(context)
@@ -79,6 +103,78 @@ class PackActionsController(
                 else -> chooser = pack to targets
             }
         }
+    }
+
+    /**
+     * Builds the temporary parts (contiguous slices in the original order, same tray icon,
+     * "Name (i/N)") and starts adding them one by one. The stored pack is never touched.
+     */
+    fun confirmSplit() {
+        val offer = splitOffer ?: return
+        splitOffer = null
+        val pack = offer.pack
+        scope.launch {
+            val stickers = repo.stickersOf(pack.id)
+            val sizes = PackSplit.partSizes(stickers.size)
+            if (sizes.isEmpty()) {
+                info = R.string.wa_rejected
+                return@launch
+            }
+            val dir = java.io.File(context.filesDir, "packs/${pack.id}")
+            val trayName = pack.trayFile ?: ""
+            splitParts = sizes.mapIndexed { i, size ->
+                val from = sizes.take(i).sum()
+                EphemeralPacks.Part(
+                    id = "split-${pack.id}-${i + 1}",
+                    name = PackSplit.partName(pack.name, i + 1, sizes.size),
+                    publisher = pack.publisher,
+                    trayName = trayName,
+                    tray = if (trayName.isEmpty()) null else java.io.File(dir, trayName),
+                    animated = pack.animated,
+                    imageDataVersion = pack.imageDataVersion,
+                    stickers = stickers.subList(from, from + size),
+                    dir = dir,
+                )
+            }
+            splitParts.forEach { EphemeralPacks.put(it) }
+            splitIndex = 0
+            splitAdded = 0
+            val targets = WhatsAppIntegration.installedTargets(context)
+            when {
+                targets.isEmpty() -> {
+                    cleanupSplit()
+                    info = R.string.wa_not_installed
+                }
+                targets.size == 1 -> startSplit(targets[0])
+                else -> splitChooser = targets
+            }
+        }
+    }
+
+    fun startSplit(target: String) {
+        splitChooser = null
+        splitTarget = target
+        launchSplitPart()
+    }
+
+    private fun launchSplitPart() {
+        val target = splitTarget ?: return cleanupSplit()
+        val part = splitParts.getOrNull(splitIndex) ?: return cleanupSplit()
+        splitActive = true
+        try {
+            launchEnable(WhatsAppIntegration.enableIntent(context, part.id, part.name, target))
+        } catch (e: ActivityNotFoundException) {
+            cleanupSplit()
+            info = R.string.wa_not_installed
+        }
+    }
+
+    private fun cleanupSplit() {
+        splitParts.forEach { EphemeralPacks.remove(it.id) }
+        splitParts = emptyList()
+        splitActive = false
+        splitTarget = null
+        splitIndex = 0
     }
 
     fun start(pack: PackEntity, target: String) {
@@ -92,6 +188,26 @@ class PackActionsController(
     }
 
     fun onEnableResult(resultCode: Int, data: Intent?) {
+        if (splitActive) {
+            if (resultCode == Activity.RESULT_OK) {
+                splitAdded++
+                splitIndex++
+                if (splitIndex < splitParts.size) {
+                    launchSplitPart()
+                    return
+                }
+                info = R.string.split_done
+                infoDetail = context.getString(R.string.split_done_detail, splitAdded, splitParts.size)
+            } else {
+                val error = data?.getStringExtra("validation_error")
+                val total = splitParts.size
+                val failedAt = splitIndex + 1
+                info = if (error != null) R.string.wa_rejected else R.string.split_stopped
+                infoDetail = (error ?: context.getString(R.string.split_stopped_detail, failedAt, total))
+            }
+            cleanupSplit()
+            return
+        }
         if (resultCode == Activity.RESULT_OK) {
             sentPack?.let { WaSyncStore.record(context, it.id, it.imageDataVersion) }
             info = R.string.wa_added
@@ -192,6 +308,40 @@ fun PackActionsDialogs(c: PackActionsController) {
                 }
             },
             confirmButton = { TextButton(onClick = { c.issues = null }) { Text(stringResource(R.string.ok)) } },
+        )
+    }
+
+    c.splitOffer?.let { offer ->
+        AlertDialog(
+            onDismissRequest = { c.splitOffer = null },
+            title = { Text(stringResource(R.string.split_offer_title)) },
+            text = { Text(stringResource(R.string.split_offer_message, offer.stickers, offer.parts)) },
+            confirmButton = {
+                TextButton(onClick = { c.confirmSplit() }) { Text(stringResource(R.string.split_offer_confirm, offer.parts)) }
+            },
+            dismissButton = { TextButton(onClick = { c.splitOffer = null }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
+    c.splitChooser?.let { targets ->
+        AlertDialog(
+            onDismissRequest = { c.splitChooser = null; },
+            title = { Text(stringResource(R.string.choose_whatsapp)) },
+            text = {
+                Column {
+                    targets.forEach { target ->
+                        TextButton(onClick = { c.startSplit(target) }) {
+                            Text(
+                                stringResource(
+                                    if (target == WhatsAppIntegration.PACKAGE_BUSINESS) R.string.whatsapp_business else R.string.whatsapp,
+                                ),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { c.splitChooser = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 
