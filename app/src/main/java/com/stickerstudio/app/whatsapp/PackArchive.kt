@@ -17,6 +17,10 @@ class ArchivePack(
     val webps: List<ArchiveSticker>,
     /** Ordinary pictures (png / jpg / gif ...), used only when there are no WebP stickers. */
     val images: List<ArchiveSticker>,
+    /** Sticker entries dropped only for exceeding [MAX_ENTRY_BYTES]; counted, never silent. */
+    val skippedOversized: Int = 0,
+    /** Every sticker entry - WebP and plain pictures together - in the pack's own order. */
+    val stickers: List<ArchiveSticker> = webps + images,
 )
 
 /**
@@ -28,7 +32,7 @@ class ArchivePack(
 object PackArchive {
     const val MAX_ENTRIES = 400
     const val MAX_ENTRY_BYTES = 12 * 1024 * 1024
-    const val MAX_TOTAL_BYTES = 64L * 1024 * 1024
+    const val MAX_TOTAL_BYTES = 256L * 1024 * 1024
 
     private val IMAGE_EXT = setOf("png", "jpg", "jpeg", "gif", "bmp")
 
@@ -40,6 +44,7 @@ object PackArchive {
         val images = ArrayList<ArchiveSticker>()
         var entries = 0
         var total = 0L
+        var skippedOversized = 0
 
         ZipInputStream(input).use { zip ->
             while (true) {
@@ -54,7 +59,12 @@ object PackArchive {
                 val lower = base.lowercase()
                 val wanted = ext == "webp" || ext in IMAGE_EXT || ext == "txt" || ext == "json"
                 if (!wanted) continue
-                val bytes = readCapped(zip, MAX_ENTRY_BYTES) ?: continue   // oversized entries are skipped
+                val bytes = readCapped(zip, MAX_ENTRY_BYTES)
+                if (bytes == null) {
+                    // oversized sticker entries are counted so the caller can report them
+                    if (ext == "webp" || ext in IMAGE_EXT) skippedOversized++
+                    continue
+                }
                 total += bytes.size
                 if (total > MAX_TOTAL_BYTES) throw IOException("Archive too large")
 
@@ -84,7 +94,9 @@ object PackArchive {
                         if (ia != ib) ia.compareTo(ib) else naturalCompare(a.name, b.name)
                     }
                 )
-        return ArchivePack(title, author, arrange(webps), arrange(images))
+        val w = arrange(webps)
+        val im = arrange(images)
+        return ArchivePack(title, author, w, im, skippedOversized, arrange(w + im))
     }
 
     private class Parsed(val title: String?, val author: String?, val order: Map<String, Pair<Int, String?>>)
@@ -124,8 +136,7 @@ object PackArchive {
         val sb = StringBuilder()
         sb.append(pack.title.orEmpty()).append('\u0000')
         sb.append(pack.author.orEmpty()).append('\u0000')
-        val items = pack.webps.ifEmpty { pack.images }
-        for (s in items) {
+        for (s in pack.stickers) {
             sb.append(s.name.lowercase()).append(':').append(s.bytes.size).append(':')
                 .append(Sha256.hex(s.bytes)).append('\u0000')
         }
