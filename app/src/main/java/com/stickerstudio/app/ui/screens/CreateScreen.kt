@@ -83,7 +83,7 @@ fun CreateScreen(
     val context = LocalContext.current
     val repo = context.container.repository
     val scope = rememberCoroutineScope()
-    val packs by repo.observePacks().collectAsState(initial = emptyList<PackEntity>())
+    val packs by repo.observeCreatedPacks().collectAsState(initial = emptyList<PackEntity>())
     val publisher by context.container.settings.defaultPublisher.collectAsState(initial = "")
 
     var target by remember { mutableStateOf<String?>(null) }

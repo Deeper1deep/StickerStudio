@@ -25,3 +25,16 @@ class ExportIsolationTest {
         assertTrue(!text.contains("PackDetailScreen") && !text.contains("HomeScreen") && !text.contains("EditorScreen"))
     }
 }
+
+/** Guards the rule that imported packs never appear in the "save to pack" lists. */
+class SaveToPackListTest {
+    private val base = File("src/main/java/com/stickerstudio/app/ui/screens")
+
+    @Test fun saveToPackListsUseOnlyCreatedPacks() {
+        for (n in listOf("CreateScreen.kt", "EditorScreen.kt")) {
+            val text = File(base, n).readText()
+            assertTrue("$n must not list every pack", !text.contains("observePacks()"))
+            assertTrue("$n must use the created-packs list", text.contains("observeCreatedPacks()"))
+        }
+    }
+}

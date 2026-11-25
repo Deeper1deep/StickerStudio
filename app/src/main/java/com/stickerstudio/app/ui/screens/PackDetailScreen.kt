@@ -426,7 +426,8 @@ fun PackDetailScreen(
         )
     }
     pickTarget?.let { (ids, move) ->
-        val others = allPacks.filter { it.id != packId }
+        // copy / move targets stay inside the same section (my packs vs imported packs)
+        val others = allPacks.filter { t -> t.id != packId && (pack == null || (pack!!.source == "IMPORTED") == (t.source == "IMPORTED")) }
         AlertDialog(
             onDismissRequest = { pickTarget = null },
             title = { Text(stringResource(R.string.choose_pack)) },

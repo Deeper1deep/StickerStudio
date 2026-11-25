@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased - save-to-pack lists only my packs
+
+- The "save to pack" lists (Create screen and the editor's save dialog) now show only packs made in the app; imported packs can no longer appear there. Copy / move between packs stays inside the same section. A unit test guards it.
+
 ## Unreleased - import keeps every sticker of the file
 
 - Animated stickers that miss WhatsApp's export spec (not 512x512, or over 500 KB) are no longer dropped during import: the file is kept whole in the Imported packs section, and the export validator reports any out-of-spec sticker honestly when the pack is actually sent to WhatsApp.

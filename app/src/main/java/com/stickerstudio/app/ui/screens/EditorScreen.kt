@@ -838,7 +838,7 @@ fun SaveDialog(
     val context = LocalContext.current
     val container = context.container
     val scope = rememberCoroutineScope()
-    val packs by container.repository.observePacks().collectAsState(initial = emptyList())
+    val packs by container.repository.observeCreatedPacks().collectAsState(initial = emptyList())
     val counts by container.repository.observeCounts().collectAsState(initial = emptyList())
     val defaultPublisher by container.settings.defaultPublisher.collectAsState(initial = "")
 
