@@ -14,6 +14,22 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface StickerDao {
 
+    // ---- sticker audio (optional, separate table)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertAudio(audio: StickerAudioEntity)
+
+    @Query("SELECT * FROM sticker_audio WHERE stickerId = :stickerId")
+    fun findAudio(stickerId: String): StickerAudioEntity?
+
+    @Query("SELECT * FROM sticker_audio WHERE stickerId = :stickerId")
+    fun observeAudio(stickerId: String): Flow<StickerAudioEntity?>
+
+    @Query("DELETE FROM sticker_audio WHERE stickerId = :stickerId")
+    fun deleteAudio(stickerId: String)
+
+    @Query("SELECT fileName FROM sticker_audio")
+    fun audioFileNames(): List<String>
+
     // ---- packs
     @Query("SELECT * FROM packs ORDER BY updatedAt DESC")
     fun observePacks(): Flow<List<PackEntity>>

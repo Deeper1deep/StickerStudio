@@ -17,8 +17,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * the user's packs.
  */
 @Database(
-    entities = [PackEntity::class, StickerEntity::class, DraftEntity::class],
-    version = 2,
+    entities = [PackEntity::class, StickerEntity::class, DraftEntity::class, StickerAudioEntity::class],
+    version = 3,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -40,8 +40,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** 2 → 3: adds the separate sticker_audio table only; no existing row or column is touched. */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sticker_audio` (`stickerId` TEXT NOT NULL, `fileName` TEXT NOT NULL, " +
+                        "`durationMs` INTEGER NOT NULL, `sourceKind` TEXT NOT NULL, `trimStartMs` INTEGER NOT NULL, " +
+                        "`trimEndMs` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`stickerId`), " +
+                        "FOREIGN KEY(`stickerId`) REFERENCES `stickers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+            }
+        }
+
         /** Add future migrations here; `fallbackToDestructiveMigration` stays forbidden. */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 
         @Volatile
         private var instance: AppDatabase? = null

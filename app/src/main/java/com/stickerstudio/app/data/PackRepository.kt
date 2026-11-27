@@ -19,9 +19,12 @@ class PackRuleException(val code: Code, val limit: Int = 0) : Exception(code.nam
 class AppPaths(context: Context) {
     val packs: File = File(context.filesDir, "packs").apply { mkdirs() }
     val sources: File = File(context.filesDir, "sources").apply { mkdirs() }
+    /** Audio of sound stickers; separate from the image files. */
+    val audio: File = File(context.filesDir, "audio").apply { mkdirs() }
 
     fun packDir(packId: String): File = File(packs, packId).apply { mkdirs() }
     fun source(name: String): File = File(sources, name)
+    fun audioFile(name: String): File = File(audio, name)
 }
 
 class PackRepository(context: Context, db: AppDatabase) {
@@ -100,6 +103,37 @@ class PackRepository(context: Context, db: AppDatabase) {
         dao.stickersOf(id).forEach { s -> s.sourceFile?.let { paths.source(it).delete() } }
         dao.deletePack(id)   // stickers are removed by the foreign key cascade
         File(paths.packs, id).deleteRecursively()
+        sweepAudio()
+    }
+
+    // ------------------------------------------------------------------ sticker audio
+
+    suspend fun audioOf(stickerId: String): StickerAudioEntity? = withContext(Dispatchers.IO) { dao.findAudio(stickerId) }
+
+    fun observeAudio(stickerId: String): Flow<StickerAudioEntity?> = dao.observeAudio(stickerId)
+
+    /** Attaches (or replaces) the audio of a sticker. The audio file must already be in [AppPaths.audio]. */
+    suspend fun setAudio(stickerId: String, clip: com.stickerstudio.app.audio.AudioClip): Boolean = withContext(Dispatchers.IO) {
+        if (dao.findSticker(stickerId) == null) return@withContext false
+        dao.upsertAudio(
+            StickerAudioEntity(
+                stickerId = stickerId, fileName = clip.fileName, durationMs = clip.durationMs,
+                sourceKind = clip.sourceKind.name, trimStartMs = clip.trimStartMs, trimEndMs = clip.trimEndMs,
+                createdAt = System.currentTimeMillis(),
+            )
+        )
+        sweepAudio()   // the replaced file, if any
+        true
+    }
+
+    suspend fun removeAudio(stickerId: String) = withContext(Dispatchers.IO) {
+        dao.deleteAudio(stickerId)
+        sweepAudio()
+    }
+
+    /** Deletes audio files that no sticker refers to any more (recent files get a grace period). */
+    suspend fun sweepAudio(): Int = withContext(Dispatchers.IO) {
+        AudioStorage.sweep(paths.audio, dao.audioFileNames().toSet())
     }
 
     // ------------------------------------------------------------------ stickers
@@ -196,6 +230,7 @@ class PackRepository(context: Context, db: AppDatabase) {
         }
         File(paths.packDir(s.packId), s.fileName).delete()
         s.sourceFile?.let { paths.source(it).delete() }
+        sweepAudio()
         refreshTray(s.packId)
     }
 
@@ -273,6 +308,7 @@ class PackRepository(context: Context, db: AppDatabase) {
         var copied = 0
         var anyAnimated = false
         val inserts = ArrayList<StickerEntity>()
+        val audioInserts = ArrayList<StickerAudioEntity>()
         for (sid in stickerIds) {
             if (count >= limit) break
             val s = dao.findSticker(sid) ?: continue
@@ -294,6 +330,16 @@ class PackRepository(context: Context, db: AppDatabase) {
                 id = newId, packId = targetPackId, fileName = newName, position = nextPos++,
                 sourceFile = newSource, createdAt = System.currentTimeMillis(),
             )
+            // the sticker's sound goes with it (own file, so deleting one copy never silences the other)
+            dao.findAudio(s.id)?.let { a ->
+                val from = paths.audioFile(a.fileName)
+                if (from.isFile) {
+                    val ext = a.fileName.substringAfterLast('.', "")
+                    val name = if (ext.isEmpty()) UUID.randomUUID().toString() else "${UUID.randomUUID()}.$ext"
+                    from.copyTo(paths.audioFile(name), overwrite = true)
+                    audioInserts += a.copy(stickerId = newId, fileName = name, createdAt = System.currentTimeMillis())
+                }
+            }
             anyAnimated = anyAnimated || s.animated
             count++
             copied++
@@ -301,6 +347,7 @@ class PackRepository(context: Context, db: AppDatabase) {
         if (copied > 0) {
             tx {
                 inserts.forEach { dao.insertSticker(it) }
+                audioInserts.forEach { dao.upsertAudio(it) }
                 dao.updatePack(
                     target.copy(
                         animated = target.animated || anyAnimated,
@@ -377,6 +424,7 @@ class PackRepository(context: Context, db: AppDatabase) {
             File(File(paths.packDir(packId), "anim"), s.fileName).delete()
             s.sourceFile?.let { paths.source(it).delete() }
         }
+        sweepAudio()
         refreshTray(packId)
     }
 

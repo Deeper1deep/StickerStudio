@@ -59,6 +59,34 @@ data class StickerEntity(
     val createdAt: Long,
 )
 
+/**
+ * The optional audio of ONE sticker (sound stickers). A separate table: stickers without audio have
+ * no row here, so existing stickers are exactly as before. Deleted together with the sticker
+ * (cascade); the audio file itself is removed by [AudioStorage.sweep].
+ */
+@Entity(
+    tableName = "sticker_audio",
+    foreignKeys = [
+        ForeignKey(
+            entity = StickerEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["stickerId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+data class StickerAudioEntity(
+    @PrimaryKey val stickerId: String,
+    /** File inside the app's audio folder. */
+    val fileName: String,
+    val durationMs: Long,
+    /** An [com.stickerstudio.app.audio.AudioSourceKind] name. */
+    val sourceKind: String,
+    val trimStartMs: Long,
+    val trimEndMs: Long,
+    val createdAt: Long,
+)
+
 /** Unfinished editing session kept so the user can come back to it. */
 @Entity(tableName = "drafts")
 data class DraftEntity(
