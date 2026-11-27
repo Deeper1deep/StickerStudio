@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased - sound stickers, step 1 (internal groundwork, no UI yet)
+
+- New `audio` package (pure Kotlin, unit tested): audio clip model kept **separate from the sticker image**, configurable duration limits (not hardcoded WhatsApp rules), trim rules, audio file checks (missing / empty / corrupted), waveform peaks and a safe JSON form.
+- Sound export adapter that honestly answers **"unsupported"**: WhatsApp has not published a sound-sticker format for third-party apps (github.com/WhatsApp/stickers issue #1163). The standard sticker export is untouched.
+
 ## Unreleased - save-to-pack lists only my packs
 
 - The "save to pack" lists (Create screen and the editor's save dialog) now show only packs made in the app; imported packs can no longer appear there. Copy / move between packs stays inside the same section. A unit test guards it.
